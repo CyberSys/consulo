@@ -19,5 +19,5 @@ package com.intellij.openapi.actionSystem;
  * @author Konstantin Bulenkov
  */
 public interface AnActionHolder {
-  AnAction getAction();
+  AnAction getAnAction();
 }

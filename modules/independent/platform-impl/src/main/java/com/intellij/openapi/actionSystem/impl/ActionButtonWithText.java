@@ -53,9 +53,4 @@ public class ActionButtonWithText extends ActionButton {
   public int iconTextSpace() {
     return (getIcon() instanceof EmptyIcon || getIcon() == null ) ? 0 : JBUI.scale(ICON_TEXT_SPACE);
   }
-
-  public String getText() {
-    final String text = myPresentation.getText();
-    return text != null? text : "";
-  }
 }

@@ -61,7 +61,7 @@ public class ActionButtonUI extends ComponentUI {
   }
 
   private void paintTextButton(Graphics g, ActionButtonWithText c) {
-    AnAction action = c.getAction();
+    AnAction action = c.getAnAction();
 
     Icon icon = c.getIcon();
     FontMetrics fm = SwingUtilities2.getFontMetrics(c, g, c.getFont());
@@ -115,7 +115,7 @@ public class ActionButtonUI extends ComponentUI {
     return -1;
   }
   private void paintDefaultButton(Graphics g, ActionButton c) {
-    AnAction action = c.getAction();
+    AnAction action = c.getAnAction();
 
     int state = c.getPopState();
 

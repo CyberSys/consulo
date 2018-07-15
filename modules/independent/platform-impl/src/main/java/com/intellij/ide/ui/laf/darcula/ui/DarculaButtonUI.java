@@ -94,8 +94,6 @@ public class DarculaButtonUI extends BasicButtonUI {
                                                 textRect.y + metrics.getAscent() + getTextShiftOffset() + JBUI.scale(1));
       g.setColor(UIManager.getColor("Button.disabledText"));
       SwingUtilities2.drawStringUnderlineCharAt(c, g, text, -1, textRect.x + getTextShiftOffset(), textRect.y + metrics.getAscent() + getTextShiftOffset());
-
-
     }
   }
 
@@ -108,7 +106,6 @@ public class DarculaButtonUI extends BasicButtonUI {
       }
     }
   }
-
 
   public static boolean isHelpButton(JComponent button) {
     return SystemInfo.isMac && button instanceof JButton && "help".equals(button.getClientProperty("JButton.buttonType"));

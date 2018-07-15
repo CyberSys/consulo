@@ -59,7 +59,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-public class ActionToolbarImpl extends JPanel implements ActionToolbar, QuickActionProvider {
+public class ActionToolbarImpl extends JToolBar implements ActionToolbar, QuickActionProvider {
   private static final Logger LOG = Logger.getInstance("#com.intellij.openapi.actionSystem.impl.ActionToolbarImpl");
 
   private static final List<ActionToolbarImpl> ourToolbars = new LinkedList<>();
@@ -984,7 +984,7 @@ public class ActionToolbarImpl extends JPanel implements ActionToolbar, QuickAct
   }
 
   private static void updateWhenFirstShown(JComponent targetComponent, final ToolbarReference ref) {
-    Activatable activatable = new Activatable.Adapter() {
+    Activatable activatable = new Activatable() {
       public void showNotify() {
         ActionToolbarImpl toolbar = ref.get();
         if (toolbar != null) {
