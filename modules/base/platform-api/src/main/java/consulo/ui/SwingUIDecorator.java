@@ -19,6 +19,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.swing.*;
 import java.awt.*;
+import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 
@@ -33,9 +34,16 @@ public interface SwingUIDecorator extends UIDecorator {
     UIDecorator.apply(predicate, arg, SwingUIDecorator.class);
   }
 
+  static <ARG> void apply(BiConsumer<SwingUIDecorator, ARG> consumer, ARG arg) {
+    UIDecorator.apply(consumer, arg, SwingUIDecorator.class);
+  }
+
   @Nonnull
   static <R> R get(@Nonnull Function<SwingUIDecorator, R> supplier) {
     return UIDecorator.get(supplier, SwingUIDecorator.class);
+  }
+
+  default void init() {
   }
 
   @Nullable
@@ -53,5 +61,8 @@ public interface SwingUIDecorator extends UIDecorator {
 
   default boolean decorateSidebarTree(@Nonnull JTree tree) {
     return false;
+  }
+
+  default void decorateHelpButton(@Nonnull JButton helpButton) {
   }
 }

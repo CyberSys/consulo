@@ -200,7 +200,7 @@ public class NavBarRootPaneExtension extends IdeRootPaneNorthExtension {
     myWrapperPanel.putClientProperty("NavBarPanel", myNavigationBar);
     myNavigationBar.getModel().setFixedComponent(true);
     myScrollPane = ScrollPaneFactory.createScrollPane(myNavigationBar);
-
+    myScrollPane.putClientProperty("JScrollPane.style", "legacy");
     JPanel panel = new JPanel(new BorderLayout()) {
 
       @Override

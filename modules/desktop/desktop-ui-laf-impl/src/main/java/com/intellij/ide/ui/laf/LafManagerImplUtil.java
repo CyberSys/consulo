@@ -18,6 +18,7 @@ package com.intellij.ide.ui.laf;
 import com.intellij.openapi.util.SystemInfo;
 import org.jetbrains.annotations.NonNls;
 
+import javax.annotation.Nonnull;
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
 import javax.swing.text.DefaultEditorKit;
@@ -68,6 +69,24 @@ public class LafManagerImplUtil {
     defaults.put("Tree.ancestorInputMap", null);
     FontUIResource textFont = new FontUIResource("Serif", Font.PLAIN, fontSize);
     FontUIResource monoFont = new FontUIResource("Monospaced", Font.PLAIN, fontSize);
+
+    for (String fontResource : ourPatchableFontResources) {
+      defaults.put(fontResource, uiFont);
+    }
+
+    if (!SystemInfo.isMac) {
+      defaults.put("PasswordField.font", monoFont);
+    }
+    defaults.put("TextArea.font", monoFont);
+    defaults.put("TextPane.font", textFont);
+    defaults.put("EditorPane.font", textFont);
+  }
+
+  @SuppressWarnings({"HardCodedStringLiteral"})
+  public static void initFontDefaults(@Nonnull UIDefaults defaults, @Nonnull FontUIResource uiFont) {
+    defaults.put("Tree.ancestorInputMap", null);
+    FontUIResource textFont = new FontUIResource(uiFont);
+    FontUIResource monoFont = new FontUIResource("Monospaced", Font.PLAIN, uiFont.getSize());
 
     for (String fontResource : ourPatchableFontResources) {
       defaults.put(fontResource, uiFont);

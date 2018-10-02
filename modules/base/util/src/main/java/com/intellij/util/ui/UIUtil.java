@@ -1394,11 +1394,11 @@ public class UIUtil {
   }
 
   public static Icon getTreeCollapsedIcon() {
-    return UIManager.getIcon("Tree.collapsedIcon");
+    return ObjectUtil.notNull(UIManager.getIcon("Tree.collapsedIcon"), AllIcons.Nodes.TreeClosed);
   }
 
   public static Icon getTreeExpandedIcon() {
-    return UIManager.getIcon("Tree.expandedIcon");
+    return ObjectUtil.notNull(UIManager.getIcon("Tree.expandedIcon"), AllIcons.Nodes.TreeOpen);
   }
 
   public static Icon getTreeIcon(boolean expanded) {
@@ -1461,7 +1461,11 @@ public class UIUtil {
 
   @SuppressWarnings({"HardCodedStringLiteral"})
   public static boolean isUnderAquaLookAndFeel() {
-    return SystemInfo.isMac && UIManager.getLookAndFeel().getName().contains("Mac OS X");
+    if (SystemInfo.isMac) {
+      String name = UIManager.getLookAndFeel().getName();
+      if (name.contains("Mac OS X") || name.contains("VAqua")) return true;
+    }
+    return false;
   }
 
   public static boolean isUnderAquaBasedLookAndFeel() {
@@ -2564,7 +2568,13 @@ public class UIUtil {
 
     public static StyleSheet createStyleSheet() {
       StyleSheet style = new StyleSheet();
-      style.addStyleSheet(isUnderDarkTheme() && !isUnderGTKLookAndFeel() ? (StyleSheet)UIManager.getDefaults().get("StyledEditorKit.JBDefaultStyle") : DEFAULT_HTML_KIT_CSS);
+      StyleSheet styleSheet = (StyleSheet)UIManager.getDefaults().get("StyledEditorKit.JBDefaultStyle");
+      if(styleSheet != null) {
+        style.addStyleSheet(isUnderDarkTheme() && !isUnderGTKLookAndFeel() ? styleSheet : DEFAULT_HTML_KIT_CSS);
+      }
+      else {
+        style.addStyleSheet(DEFAULT_HTML_KIT_CSS);
+      }
       style.addRule("code { font-size: 100%; }"); // small by Swing's default
       style.addRule("small { font-size: small; }"); // x-small by Swing's default
       return style;
@@ -3725,5 +3735,9 @@ public class UIUtil {
         source.removeKeyListener(keyAdapter);
       }
     });
+  }
+
+  public static boolean isDialogFont(Font font) {
+    return Font.DIALOG.equals(font.getFamily(Locale.US));
   }
 }

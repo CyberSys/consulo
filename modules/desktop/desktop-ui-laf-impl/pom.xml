@@ -46,5 +46,10 @@
       <artifactId>consulo-desktop-ui-impl</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>consulo.internal</groupId>
+      <artifactId>vappearances</artifactId>
+      <version>1.0-SNAPSHOT</version>
+    </dependency>
   </dependencies>
 </project>

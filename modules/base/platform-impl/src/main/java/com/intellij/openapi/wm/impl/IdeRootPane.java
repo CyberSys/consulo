@@ -108,6 +108,9 @@ public class IdeRootPane extends JRootPane implements UISettingsListener {
       setJMenuBar(new IdeMenuBar(actionManager, dataManager));
     }
 
+    putClientProperty("Aqua.windowStyle", "unifiedToolBar");
+
+
     IdeGlassPaneImpl glassPane = new IdeGlassPaneImpl(this, true);
     setGlassPane(glassPane);
     myGlassPaneInitialized = true;
@@ -185,6 +188,7 @@ public class IdeRootPane extends JRootPane implements UISettingsListener {
   void updateToolbar() {
     removeToolbar();
     myToolbar = createToolbar();
+    myToolbar.putClientProperty("Aqua.isToolBarPanel", Boolean.TRUE);
     myNorthPanel.add(myToolbar, 0);
     updateToolbarVisibility();
     myContentPane.revalidate();

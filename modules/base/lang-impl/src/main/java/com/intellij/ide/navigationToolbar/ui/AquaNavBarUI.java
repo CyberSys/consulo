@@ -16,7 +16,6 @@
 package com.intellij.ide.navigationToolbar.ui;
 
 import com.intellij.ide.navigationToolbar.NavBarItem;
-import com.intellij.ui.Gray;
 import com.intellij.util.ui.UIUtil;
 
 import java.awt.*;
@@ -38,10 +37,5 @@ public class AquaNavBarUI extends AbstractNavBarUI {
   @Override
   public void doPaintWrapperPanel(Graphics2D g, Rectangle bounds, boolean mainToolbarVisible) {
     UIUtil.drawGradientHToolbarBackground(g, bounds.width, bounds.height);
-  }
-
-  @Override
-  protected Color getBackgroundColor() {
-    return UIUtil.getSlightlyDarkerColor(Gray._200);
   }
 }

@@ -62,4 +62,10 @@ public class MacAquaUIDecorator implements SwingUIDecorator {
     LookAndFeel lookAndFeel = UIManager.getLookAndFeel();
     return "com.apple.laf.AquaLookAndFeel".equals(lookAndFeel.getClass().getName());
   }
+
+  @Override
+  public void decorateHelpButton(@Nonnull JButton helpButton) {
+    helpButton.putClientProperty("JButton.buttonType", "help");
+    helpButton.setText("");
+  }
 }

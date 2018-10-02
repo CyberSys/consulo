@@ -348,12 +348,18 @@ public final class ComboBoxButtonImpl extends JComboBox<Object> implements Combo
 
   @Override
   public void updateUI() {
-    ComboBoxUI comboBoxUI = (ComboBoxUI)UIManager.getUI(this);
+    try {
+      ComboBoxUI comboBoxUI = (ComboBoxUI)UIManager.getUI(this);
 
-    setUI(new HackyComboBoxUI(comboBoxUI));
+      setUI(new HackyComboBoxUI(comboBoxUI));
 
-    // refresh state
-    setLikeButton(myLikeButton, myOnClickListener);
+      // refresh state
+      setLikeButton(myLikeButton, myOnClickListener);
+    }
+    catch (Exception e) {
+      // ignore if component check ui instance
+      super.updateUI();
+    }
 
     SwingUIDecorator.apply(SwingUIDecorator::decorateToolbarComboBox, this);
   }

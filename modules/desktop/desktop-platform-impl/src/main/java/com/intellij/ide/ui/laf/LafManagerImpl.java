@@ -50,8 +50,6 @@ import com.intellij.openapi.wm.impl.status.BasicStatusBarUI;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.ScreenUtil;
 import com.intellij.ui.content.Content;
-import com.intellij.ui.plaf.beg.BegMenuItemUI;
-import com.intellij.ui.plaf.beg.IdeaMenuUI;
 import com.intellij.util.IJSwingUtilities;
 import com.intellij.util.ReflectionUtil;
 import com.intellij.util.containers.ContainerUtil;
@@ -69,8 +67,11 @@ import consulo.ide.ui.laf.modernDark.ModernDarkLookAndFeelInfo;
 import consulo.ide.ui.laf.modernWhite.ModernWhiteLookAndFeelInfo;
 import consulo.ide.ui.laf.modernWhite.NativeModernWhiteLookAndFeelInfo;
 import consulo.ui.GTKPlusUIUtil;
+import consulo.ui.SwingUIDecorator;
+import consulo.ui.UIDecorator;
 import consulo.ui.laf.UIModificationTracker;
 import consulo.ui.style.StyleManager;
+import org.intellij.lang.annotations.JdkConstants;
 import org.jdom.Element;
 import org.jetbrains.annotations.NonNls;
 
@@ -90,10 +91,8 @@ import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author Eugene Belyaev
@@ -134,6 +133,7 @@ public final class LafManagerImpl extends LafManager implements Disposable, Pers
 
     if (SystemInfo.isMac) {
       lafList.add(new MacDefaultLookAndFeelInfo("Default", UIManager.getSystemLookAndFeelClassName()));
+      lafList.add(new UIManager.LookAndFeelInfo("VAqua", "org.violetlib.aqua.AquaLookAndFeel"));
     }
     else {
       lafList.add(new IntelliJLookAndFeelInfo());
@@ -318,12 +318,20 @@ public final class LafManagerImpl extends LafManager implements Disposable, Pers
 
       UIManager.setLookAndFeel(lookAndFeelInfo.getClassName());
 
+      SwingUIDecorator uiDecorator = UIDecorator.get();
+      uiDecorator.init();
+
       fireUpdate();
     }
     catch (Exception e) {
       Messages.showMessageDialog(IdeBundle.message("error.cannot.set.look.and.feel", lookAndFeelInfo.getName(), e.getMessage()), CommonBundle.getErrorTitle(), Messages.getErrorIcon());
       return;
     }
+
+    if (SystemInfo.isMacOSYosemite) {
+      //installMacOSXFonts(UIManager.getLookAndFeelDefaults());
+    }
+
     myCurrentLaf = lookAndFeelInfo;
 
     checkLookAndFeel(lookAndFeelInfo, false);
@@ -370,13 +378,14 @@ public final class LafManagerImpl extends LafManager implements Disposable, Pers
 
     fixGtkPopupStyle();
 
+    boolean dark = StyleManager.get().getCurrentStyle().isDark();
     if (UIUtil.isUnderAquaLookAndFeel()) {
       uiDefaults.put("Panel.opaque", Boolean.TRUE);
       uiDefaults.put("ScrollBarUI", MacButtonlessScrollbarUI.class.getName());
-      uiDefaults.put("JBEditorTabsUI", MacEditorTabsUI.class.getName());
-      uiDefaults.put("MenuItemUI", BegMenuItemUI.class.getName());
-      uiDefaults.put("CheckBoxMenuItemUI", BegMenuItemUI.class.getName());
-      uiDefaults.put("MenuUI", IdeaMenuUI.class.getName());
+      uiDefaults.put("JBEditorTabsUI", dark ? DarculaEditorTabsUI.class.getName() : MacEditorTabsUI.class.getName());
+      //uiDefaults.put("MenuItemUI", BegMenuItemUI.class.getName());
+      //uiDefaults.put("CheckBoxMenuItemUI", BegMenuItemUI.class.getName());
+      //uiDefaults.put("MenuUI", IdeaMenuUI.class.getName());
     }
     else if (UIUtil.isWinLafOnVista()) {
       uiDefaults.put("ComboBox.border", null);
@@ -401,15 +410,11 @@ public final class LafManagerImpl extends LafManager implements Disposable, Pers
     }
 
     if (uiDefaults.get("JBEditorTabsUI") == null) {
-      uiDefaults.put("JBEditorTabsUI", StyleManager.get().getCurrentStyle().isDark() ? DarculaEditorTabsUI.class.getName() : IntelliJEditorTabsUI.class.getName());
+      uiDefaults.put("JBEditorTabsUI", dark ? DarculaEditorTabsUI.class.getName() : IntelliJEditorTabsUI.class.getName());
     }
 
     if (uiDefaults.get("IdeStatusBarUI") == null) {
       uiDefaults.put("IdeStatusBarUI", BasicStatusBarUI.class.getName());
-    }
-
-    if (uiDefaults.get("ActionButtonUI") == null) {
-      uiDefaults.put("ActionButtonUI", ActionButtonUI.class.getName());
     }
 
     updateToolWindows();
@@ -576,18 +581,6 @@ public final class LafManagerImpl extends LafManager implements Disposable, Pers
   }
 
   private void patchLafFonts(UIDefaults uiDefaults) {
-    //if (JBUI.isHiDPI()) {
-    //  HashMap<Object, Font> newFonts = new HashMap<Object, Font>();
-    //  for (Object key : uiDefaults.keySet().toArray()) {
-    //    Object val = uiDefaults.get(key);
-    //    if (val instanceof Font) {
-    //      newFonts.put(key, JBFont.create((Font)val));
-    //    }
-    //  }
-    //  for (Map.Entry<Object, Font> entry : newFonts.entrySet()) {
-    //    uiDefaults.put(entry.getKey(), entry.getValue());
-    //  }
-    //} else
     UISettings uiSettings = UISettings.getInstance();
     if (uiSettings.OVERRIDE_NONIDEA_LAF_FONTS) {
       storeOriginalFontDefaults(uiDefaults);
@@ -597,6 +590,47 @@ public final class LafManagerImpl extends LafManager implements Disposable, Pers
     else {
       restoreOriginalFontDefaults(uiDefaults);
     }
+  }
+
+  public static void installMacOSXFonts(UIDefaults defaults) {
+    final String face = "HelveticaNeue-Regular";
+    final FontUIResource uiFont = getFont(face, 13, Font.PLAIN);
+    initFontDefaults(defaults, uiFont);
+    for (Object key : new HashSet<>(defaults.keySet())) {
+      Object value = defaults.get(key);
+      if (value instanceof FontUIResource) {
+        FontUIResource font = (FontUIResource)value;
+        if (font.getFamily().equals("Lucida Grande") || font.getFamily().equals("Serif")) {
+          if (!key.toString().contains("Menu")) {
+            defaults.put(key, getFont(face, font.getSize(), font.getStyle()));
+          }
+        }
+      }
+    }
+
+    FontUIResource uiFont11 = getFont(face, 11, Font.PLAIN);
+    defaults.put("TableHeader.font", uiFont11);
+
+    FontUIResource buttonFont = getFont("HelveticaNeue-Medium", 13, Font.PLAIN);
+    defaults.put("Button.font", buttonFont);
+    Font menuFont = getFont("Lucida Grande", 14, Font.PLAIN);
+    defaults.put("Menu.font", menuFont);
+    defaults.put("MenuItem.font", menuFont);
+    defaults.put("MenuItem.acceleratorFont", menuFont);
+    defaults.put("PasswordField.font", defaults.getFont("TextField.font"));
+  }
+
+  @Nonnull
+  private static FontUIResource getFont(String yosemite, int size, @JdkConstants.FontStyle int style) {
+    if (SystemInfo.isMacOSElCapitan) {
+      // Text family should be used for relatively small sizes (<20pt), don't change to Display
+      // see more about SF https://medium.com/@mach/the-secret-of-san-francisco-fonts-4b5295d9a745#.2ndr50z2v
+      Font font = new Font(".SF NS Text", style, size);
+      if (!UIUtil.isDialogFont(font)) {
+        return new FontUIResource(font);
+      }
+    }
+    return new FontUIResource(yosemite, style, size);
   }
 
   private void restoreOriginalFontDefaults(UIDefaults defaults) {
@@ -662,6 +696,10 @@ public final class LafManagerImpl extends LafManager implements Disposable, Pers
   @SuppressWarnings({"HardCodedStringLiteral"})
   public static void initFontDefaults(UIDefaults defaults, int fontSize, FontUIResource uiFont) {
     LafManagerImplUtil.initFontDefaults(defaults, fontSize, uiFont);
+  }
+
+  public static void initFontDefaults(@Nonnull UIDefaults defaults, @Nonnull FontUIResource uiFont) {
+    LafManagerImplUtil.initFontDefaults(defaults, uiFont);
   }
 
   private static class OurPopupFactory extends PopupFactory {

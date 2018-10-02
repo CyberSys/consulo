@@ -55,6 +55,7 @@ import com.intellij.util.ArrayUtil;
 import com.intellij.util.TimeoutUtil;
 import com.intellij.util.ui.*;
 import consulo.annotations.RequiredDispatchThread;
+import consulo.ui.SwingUIDecorator;
 import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NonNls;
 import sun.swing.SwingUtilities2;
@@ -533,10 +534,7 @@ public abstract class DialogWrapper {
 
     if (hasHelpToMoveToLeftSide) {
       JButton helpButton = new JButton(getHelpAction());
-      if (!UIUtil.isUnderDarcula()) {
-        helpButton.putClientProperty("JButton.buttonType", "help");
-        helpButton.setText("");
-      }
+      SwingUIDecorator.apply(SwingUIDecorator::decorateHelpButton, helpButton);
       helpButton.setMargin(insets);
       helpButton.setToolTipText(ActionsBundle.actionDescription("HelpTopics"));
       panel.add(helpButton, BorderLayout.WEST);

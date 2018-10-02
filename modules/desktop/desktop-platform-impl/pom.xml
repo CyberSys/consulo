@@ -72,5 +72,21 @@
       <artifactId>javahelp</artifactId>
       <optional>true</optional>
     </dependency>
+
+    <dependency>
+      <groupId>consulo.internal</groupId>
+      <artifactId>vaqua-shade</artifactId>
+      <version>6.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>consulo.internal</groupId>
+      <artifactId>jnr-shade</artifactId>
+      <version>7.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>consulo.internal</groupId>
+      <artifactId>vappearances</artifactId>
+      <version>1.0-SNAPSHOT</version>
+    </dependency>
   </dependencies>
 </project>
