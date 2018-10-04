@@ -65,4 +65,11 @@ public interface SwingUIDecorator extends UIDecorator {
 
   default void decorateHelpButton(@Nonnull JButton helpButton) {
   }
+
+  /**
+   * Some laf can modify scrollpanes for support some features, like invisible track
+   * This method - disable those modification
+   */
+  default void setLegacyScrollBar(@Nonnull JScrollPane pane) {
+  }
 }

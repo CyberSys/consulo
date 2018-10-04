@@ -23,21 +23,15 @@ import com.intellij.openapi.keymap.KeymapUtil;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.ColoredListCellRenderer;
-import com.intellij.util.FieldAccessor;
-import com.intellij.util.ReflectionUtil;
 import consulo.ui.SwingUIDecorator;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.swing.*;
 import javax.swing.plaf.ComboBoxUI;
-import javax.swing.plaf.basic.BasicComboBoxUI;
-import javax.swing.plaf.basic.ComboPopup;
-import java.awt.*;
-import java.awt.event.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.lang.reflect.Field;
+import java.lang.reflect.Constructor;
 
 /**
  * @author VISTALL
@@ -49,176 +43,6 @@ import java.lang.reflect.Field;
  * 2. Adding items dont supported. There only one item, which used for rendering
  */
 public final class ComboBoxButtonImpl extends JComboBox<Object> implements ComboBoxButton {
-  private class HackComboBoxPopup implements ComboPopup {
-    @Override
-    public void show() {
-      showPopup0();
-    }
-
-    @Override
-    public void hide() {
-      hidePopup0();
-    }
-
-    @Override
-    public boolean isVisible() {
-      return myCurrentPopupCanceler != null;
-    }
-
-    @Override
-    public JList getList() {
-      return null;
-    }
-
-    @Override
-    public MouseListener getMouseListener() {
-      return new MouseAdapter() {
-        @Override
-        public void mouseClicked(MouseEvent e) {
-          show();
-        }
-      };
-    }
-
-    @Override
-    public MouseMotionListener getMouseMotionListener() {
-      return null;
-    }
-
-    @Override
-    public KeyListener getKeyListener() {
-      return null;
-    }
-
-    @Override
-    public void uninstallingUI() {
-    }
-  }
-
-  private static Field ourPopupField = ReflectionUtil.getDeclaredField(BasicComboBoxUI.class, "popup");
-
-  private static Field popupMouseListener = ReflectionUtil.getDeclaredField(BasicComboBoxUI.class, "popupMouseListener");
-  private static Field popupMouseMotionListener = ReflectionUtil.getDeclaredField(BasicComboBoxUI.class, "popupMouseMotionListener");
-  private static Field popupKeyListener = ReflectionUtil.getDeclaredField(BasicComboBoxUI.class, "popupKeyListener");
-  private static FieldAccessor<BasicComboBoxUI, JButton> arrowButton = new FieldAccessor<>(BasicComboBoxUI.class, "arrowButton");
-
-  private class HackyComboBoxUI extends ComboBoxUI {
-
-    private BasicComboBoxUI myDelegateUI;
-
-    private MouseListener myMouseListener;
-
-    public HackyComboBoxUI(ComboBoxUI ui) {
-      myDelegateUI = (BasicComboBoxUI)ui;
-    }
-
-    @Override
-    public void installUI(JComponent c) {
-      myDelegateUI.installUI(c);
-
-      try {
-        // unregister native popup
-        ComboPopup o = (ComboPopup)ourPopupField.get(myDelegateUI);
-        if (o != null) {
-          o.uninstallingUI();
-
-          myDelegateUI.unconfigureArrowButton();
-
-          KeyListener keyListener = (KeyListener)popupKeyListener.get(myDelegateUI);
-          if (keyListener != null) {
-            c.removeKeyListener(keyListener);
-
-            popupKeyListener.set(myDelegateUI, new KeyAdapter() {
-            });
-          }
-
-          MouseListener mouseListener = (MouseListener)popupMouseListener.get(myDelegateUI);
-          if (mouseListener != null) {
-            c.removeMouseListener(mouseListener);
-
-            popupMouseListener.set(myDelegateUI, new MouseAdapter() {
-            });
-          }
-
-          MouseMotionListener mouseMotionListener = (MouseMotionListener)popupMouseMotionListener.get(myDelegateUI);
-          if (mouseMotionListener != null) {
-            c.removeMouseMotionListener(mouseMotionListener);
-
-            popupMouseMotionListener.set(myDelegateUI, new MouseMotionAdapter() {
-            });
-          }
-        }
-
-        ourPopupField.set(myDelegateUI, new HackComboBoxPopup());
-
-        myMouseListener = new MouseAdapter() {
-          @Override
-          public void mouseClicked(MouseEvent e) {
-            showPopup0();
-          }
-        };
-
-        c.addMouseListener(myMouseListener);
-
-        myDelegateUI.configureArrowButton();
-      }
-      catch (IllegalAccessException e) {
-        throw new Error(e);
-      }
-    }
-
-    @Override
-    public void uninstallUI(JComponent c) {
-      myDelegateUI.uninstallUI(c);
-      c.removeMouseListener(myMouseListener);
-    }
-
-    @Override
-    public void paint(Graphics g, JComponent c) {
-      myDelegateUI.paint(g, c);
-    }
-
-    @Override
-    public void update(Graphics g, JComponent c) {
-      myDelegateUI.update(g, c);
-    }
-
-    @Override
-    public Dimension getPreferredSize(JComponent c) {
-      return myDelegateUI.getPreferredSize(c);
-    }
-
-    @Override
-    public Dimension getMinimumSize(JComponent c) {
-      return myDelegateUI.getMinimumSize(c);
-    }
-
-    @Override
-    public Dimension getMaximumSize(JComponent c) {
-      return myDelegateUI.getMaximumSize(c);
-    }
-
-    @Override
-    public void setPopupVisible(JComboBox c, boolean v) {
-      if (v) {
-        showPopup0();
-      }
-      else {
-        hidePopup0();
-      }
-    }
-
-    @Override
-    public boolean isPopupVisible(JComboBox c) {
-      return myCurrentPopupCanceler != null;
-    }
-
-    @Override
-    public boolean isFocusTraversable(JComboBox c) {
-      return myDelegateUI.isFocusTraversable(c);
-    }
-  }
-
   private final ComboBoxAction myComboBoxAction;
   private final Presentation myPresentation;
 
@@ -258,14 +82,14 @@ public final class ComboBoxButtonImpl extends JComboBox<Object> implements Combo
     }
   }
 
-  private void hidePopup0() {
+  protected void hidePopup0() {
     if (myCurrentPopupCanceler != null) {
       myCurrentPopupCanceler.run();
       myCurrentPopupCanceler = null;
     }
   }
 
-  private void showPopup0() {
+  protected void showPopup0() {
     hidePopup0();
 
     if(myLikeButton && myOnClickListener != null) {
@@ -283,6 +107,10 @@ public final class ComboBoxButtonImpl extends JComboBox<Object> implements Combo
     popup.showUnderneathOf(this);
 
     myCurrentPopupCanceler = popup::cancel;
+  }
+
+  protected boolean isPopupVisible0() {
+    return myCurrentPopupCanceler != null;
   }
 
   private JBPopup createPopup(Runnable onDispose) {
@@ -347,11 +175,19 @@ public final class ComboBoxButtonImpl extends JComboBox<Object> implements Combo
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public void updateUI() {
     try {
       ComboBoxUI comboBoxUI = (ComboBoxUI)UIManager.getUI(this);
 
-      setUI(new HackyComboBoxUI(comboBoxUI));
+      Class uiHelper = (Class)UIManager.get("ComboBoxButtonUIHelper");
+      if(uiHelper != null) {
+        Constructor constructor = uiHelper.getConstructor(ComboBoxUI.class);
+        setUI((ComboBoxUI)constructor.newInstance(comboBoxUI));
+      }
+      else {
+        setUI(new ComboBoxButtonUI(comboBoxUI));
+      }
 
       // refresh state
       setLikeButton(myLikeButton, myOnClickListener);

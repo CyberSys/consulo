@@ -15,13 +15,16 @@
  */
 package consulo.ide.ui.impl.mac;
 
+import consulo.ide.ui.impl.mac.vaqua.VAquaComboBoxButtonUI;
 import org.violetlib.vappearances.VAppearance;
 import org.violetlib.vappearances.VAppearances;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * @author VISTALL
@@ -32,12 +35,16 @@ public class MacVAquaUIDecorator extends MacAquaUIDecorator {
   public void init() {
     try {
       UIDefaults defaults = UIManager.getDefaults();
+      defaults.put("ComboBoxButtonUIHelper", VAquaComboBoxButtonUI.class);
 
       VAppearance appearance = VAppearances.getApplicationEffectiveAppearance();
 
-      setIfNotNull(appearance, defaults, "controlBackground", "Panel.background");
+      for (Map.Entry<String, Color> entry : appearance.getColors().entrySet()) {
+        System.out.println(entry);
+      }
+      setIfNotNull(appearance, defaults, "windowBackground", "Panel.background");
       setIfNotNull(appearance, defaults, "textBackground", "List.background");
-      setIfNotNull(appearance, defaults, "controlBackground", "Tree.background");
+      setIfNotNull(appearance, defaults, "windowBackground", "Tree.background");
 
       setIfNotNull(appearance, defaults, "selectedControl", "Hyperlink.linkColor");
     }
@@ -80,5 +87,10 @@ public class MacVAquaUIDecorator extends MacAquaUIDecorator {
     catch (IOException e) {
       return false;
     }
+  }
+
+  @Override
+  public void setLegacyScrollBar(@Nonnull JScrollPane pane) {
+    pane.putClientProperty("JScrollPane.style", "legacy");
   }
 }

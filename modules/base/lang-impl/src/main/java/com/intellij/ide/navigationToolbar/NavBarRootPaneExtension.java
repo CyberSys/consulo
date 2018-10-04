@@ -31,6 +31,7 @@ import com.intellij.ui.ScrollPaneFactory;
 import com.intellij.util.ui.JBSwingUtilities;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
+import consulo.ui.SwingUIDecorator;
 import org.jetbrains.annotations.NonNls;
 
 import javax.annotation.Nullable;
@@ -200,7 +201,7 @@ public class NavBarRootPaneExtension extends IdeRootPaneNorthExtension {
     myWrapperPanel.putClientProperty("NavBarPanel", myNavigationBar);
     myNavigationBar.getModel().setFixedComponent(true);
     myScrollPane = ScrollPaneFactory.createScrollPane(myNavigationBar);
-    myScrollPane.putClientProperty("JScrollPane.style", "legacy");
+    SwingUIDecorator.apply(SwingUIDecorator::setLegacyScrollBar, myScrollPane);
     JPanel panel = new JPanel(new BorderLayout()) {
 
       @Override
