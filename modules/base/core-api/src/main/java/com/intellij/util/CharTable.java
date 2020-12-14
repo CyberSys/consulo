@@ -22,7 +22,7 @@ import javax.annotation.Nonnull;
  * @author ik
  */
 public interface CharTable {
-  Key<CharTable> CHAR_TABLE_KEY = new Key<CharTable>("Char table");
+  Key<CharTable> CHAR_TABLE_KEY = Key.create("Char table");
 
   @Nonnull
   CharSequence intern(@Nonnull CharSequence text);

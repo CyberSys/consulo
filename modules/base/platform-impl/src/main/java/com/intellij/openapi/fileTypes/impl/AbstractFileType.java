@@ -17,6 +17,7 @@ import com.intellij.openapi.util.Pair;
 import com.intellij.util.ArrayUtilRt;
 import com.intellij.util.SmartList;
 import com.intellij.util.text.StringTokenizer;
+import consulo.util.pointers.Named;
 import org.jdom.Element;
 import org.jdom.output.XMLOutputter;
 import org.jetbrains.annotations.NonNls;
@@ -29,7 +30,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-public class AbstractFileType extends UserFileType<AbstractFileType> implements ExternalizableFileType, ExternalizableScheme, CustomSyntaxTableFileType, PlainTextLikeFileType {
+public class AbstractFileType extends UserFileType<AbstractFileType> implements ExternalizableFileType, ExternalizableScheme, CustomSyntaxTableFileType, PlainTextLikeFileType, Named {
   private static final String SEMICOLON = ";";
   protected SyntaxTable mySyntaxTable;
   private SyntaxTable myDefaultSyntaxTable;

@@ -42,7 +42,7 @@ class DesktopPlatformImpl extends PlatformBase {
   }
 
   public DesktopPlatformImpl() {
-    super("consulo.platform.desktop");
+    super();
   }
 
   @Nonnull

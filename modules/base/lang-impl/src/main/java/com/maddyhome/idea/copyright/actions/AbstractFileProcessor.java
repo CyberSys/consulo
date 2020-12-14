@@ -272,7 +272,7 @@ public abstract class AbstractFileProcessor {
   }
 
   protected static void findFiles(final Module module, final List<PsiFile> files) {
-    final ModuleFileIndex idx = ModuleRootManager.getInstance(module).getFileIndex();
+    final ModuleFileIndex idx = ModuleFileIndex.getInstance(module);
 
     final VirtualFile[] roots = ModuleRootManager.getInstance(module).getContentRoots();
 

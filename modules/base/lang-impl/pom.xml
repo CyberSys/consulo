@@ -60,6 +60,12 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
+      <artifactId>consulo-execution-impl</artifactId>
+      <version>${project.version}</version>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
       <artifactId>consulo-usage-view</artifactId>
       <version>${project.version}</version>
       <optional>true</optional>
@@ -67,12 +73,6 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>consulo-bootstrap</artifactId>
-      <version>${project.version}</version>
-      <optional>true</optional>
-    </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>consulo-util-rmi</artifactId>
       <version>${project.version}</version>
       <optional>true</optional>
     </dependency>

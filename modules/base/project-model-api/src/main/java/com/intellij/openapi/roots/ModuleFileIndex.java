@@ -15,9 +15,10 @@
  */
 package com.intellij.openapi.roots;
 
+import com.intellij.openapi.module.Module;
 import com.intellij.openapi.vfs.VirtualFile;
-import javax.annotation.Nonnull;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 
 /**
@@ -26,6 +27,11 @@ import java.util.List;
  * @author dsl
  */
 public interface ModuleFileIndex extends FileIndex {
+  @Nonnull
+  static ModuleFileIndex getInstance(@Nonnull Module module) {
+    return module.getInstance(ModuleFileIndex.class);
+  }
+
   /**
    * Returns the order entry to which the specified file or directory
    * belongs.

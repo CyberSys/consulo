@@ -54,6 +54,7 @@
     <module>modules/base/annotations</module>
     <module>modules/base/analysis-api</module>
     <module>modules/base/analysis-impl</module>
+    <module>modules/base/application-api</module>
     <module>modules/base/base-localize-library</module>
     <module>modules/base/base-icon-library</module>
     <module>modules/base/built-in-server-api</module>
@@ -78,6 +79,7 @@
     <module>modules/base/external-tools-api</module>
     <module>modules/base/external-tools-impl</module>
     <module>modules/base/execution-api</module>
+    <module>modules/base/execution-impl</module>
     <module>modules/base/graph-api</module>
     <module>modules/base/graph-impl</module>
     <module>modules/base/indexing-api</module>
@@ -92,6 +94,10 @@
     <module>modules/base/lang-impl</module>
     <module>modules/base/lang-injecting-impl</module>
     <module>modules/base/lang-impl-testing</module>
+    <module>modules/base/message-bus-api</module>
+    <module>modules/base/runtime-api</module>
+    <module>modules/base/language-api</module>
+    <module>modules/base/language-injecting-api</module>
     <module>modules/base/lvcs-api</module>
     <module>modules/base/lvcs-impl</module>
     <module>modules/base/lvcs-impl-testing</module>
@@ -131,6 +137,7 @@
     <module>modules/base/xdebugger-impl</module>
     <module>modules/base/xtest-impl</module>
     <module>modules/base/xtest-sm-impl</module>
+    <module>modules/base/virtual-file-system-api</module>
 
     <module>modules/base/injecting/injecting-api</module>
     <module>modules/base/injecting/injecting-pico-impl</module>

@@ -147,7 +147,7 @@ public class FileTypeManagerImpl extends FileTypeManagerEx implements Persistent
   private final Map<String, StandardFileType> myStandardFileTypes = new LinkedHashMap<>();
   @NonNls
   private static final String[] FILE_TYPES_WITH_PREDEFINED_EXTENSIONS = {"JSP", "JSPX", "DTD", "HTML", "Properties", "XHTML"};
-  private final SchemesManager<FileType, AbstractFileType> mySchemeManager;
+  private final SchemesManager<AbstractFileType, AbstractFileType> mySchemeManager;
   @NonNls
   static final String FILE_SPEC = "filetypes";
 

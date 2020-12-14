@@ -138,7 +138,7 @@ public class DefaultNavBarExtension extends AbstractNavBarModelExtension {
     return ApplicationManager.getApplication().runReadAction(new Computable<Boolean>() {
       @Override
       public Boolean compute() {
-        final ModuleFileIndex moduleFileIndex = rootElement instanceof Module ? ModuleRootManager.getInstance((Module)rootElement).getFileIndex() : null;
+        final ModuleFileIndex moduleFileIndex = rootElement instanceof Module ? ModuleFileIndex.getInstance((Module)rootElement) : null;
         final PsiElement[] children = object.getChildren();
         for (PsiElement child : children) {
           if (child != null && child.isValid()) {

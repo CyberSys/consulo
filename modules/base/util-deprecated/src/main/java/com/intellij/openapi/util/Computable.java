@@ -17,11 +17,16 @@ package com.intellij.openapi.util;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.function.Supplier;
 
 /**
- *  @author dsl
+ * @author dsl
  */
-public interface Computable <T> {
+public interface Computable<T> extends Supplier<T> {
+
+  default T get() {
+    return compute();
+  }
 
   T compute();
 

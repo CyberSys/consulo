@@ -29,7 +29,6 @@ import com.intellij.openapi.fileTypes.FileTypeRegistry;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ModuleFileIndex;
-import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.roots.impl.DirectoryIndex;
@@ -148,7 +147,7 @@ public class BaseProjectViewDirectoryHelper {
     final Project project = psiDirectory.getProject();
     final ProjectFileIndex fileIndex = ProjectRootManager.getInstance(project).getFileIndex();
     final Module module = fileIndex.getModuleForFile(psiDirectory.getVirtualFile());
-    final ModuleFileIndex moduleFileIndex = module == null ? null : ModuleRootManager.getInstance(module).getFileIndex();
+    final ModuleFileIndex moduleFileIndex = module == null ? null : ModuleFileIndex.getInstance(module);
     if (!settings.isFlattenPackages() || skipDirectory(psiDirectory)) {
       processPsiDirectoryChildren(psiDirectory, directoryChildrenInProject(psiDirectory, settings), children, fileIndex, null, settings, withSubDirectories);
     }

@@ -20,11 +20,11 @@ import com.intellij.psi.PsiCheckedRenameElement;
 import com.intellij.psi.PsiDirectoryContainer;
 import com.intellij.psi.PsiQualifiedNamedElement;
 import com.intellij.psi.search.GlobalSearchScope;
-import com.intellij.util.ArrayFactory;
 import consulo.annotation.access.RequiredReadAction;
-import org.jetbrains.annotations.NonNls;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.function.IntFunction;
 
 /**
  * @author VISTALL
@@ -33,13 +33,7 @@ import javax.annotation.Nullable;
 public interface PsiPackage extends PsiDirectoryContainer, PsiQualifiedNamedElement, PsiCheckedRenameElement, NavigationItem {
   public static final PsiPackage[] EMPTY_ARRAY = new PsiPackage[0];
 
-  public static ArrayFactory<PsiPackage> ARRAY_FACTORY = new ArrayFactory<PsiPackage>() {
-    @Nonnull
-    @Override
-    public PsiPackage[] create(int count) {
-      return count == 0 ? EMPTY_ARRAY : new PsiPackage[count];
-    }
-  };
+  public static IntFunction<PsiPackage[]> ARRAY_FACTORY = count -> count == 0 ? EMPTY_ARRAY : new PsiPackage[count];
 
   @Nullable
   PsiPackage getParentPackage();
@@ -67,7 +61,6 @@ public interface PsiPackage extends PsiDirectoryContainer, PsiQualifiedNamedElem
   @RequiredReadAction
   @Override
   @Nullable
-  @NonNls
   String getName();
 
   /**

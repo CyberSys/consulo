@@ -15,18 +15,17 @@
  */
 package consulo.vfs.util;
 
-import consulo.fileTypes.ArchiveFileType;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import consulo.annotation.DeprecationInfo;
+import consulo.fileTypes.ArchiveFileType;
 import consulo.vfs.ArchiveFileSystem;
 import consulo.vfs.impl.archive.ArchiveEntry;
 import consulo.vfs.impl.archive.ArchiveFile;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-
-import consulo.annotation.DeprecationInfo;
-
 import java.io.*;
 import java.util.Iterator;
 
@@ -114,14 +113,8 @@ public class ArchiveVfsUtil {
       file.mkdir();
     }
     else {
-      final BufferedInputStream is = new BufferedInputStream(inputStream);
-      final BufferedOutputStream os = new BufferedOutputStream(new FileOutputStream(file));
-      try {
+      try (BufferedInputStream is = new BufferedInputStream(inputStream); BufferedOutputStream os = new BufferedOutputStream(new FileOutputStream(file))) {
         FileUtil.copy(is, os);
-      }
-      finally {
-        os.close();
-        is.close();
       }
     }
   }

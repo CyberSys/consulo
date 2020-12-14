@@ -200,7 +200,7 @@ public class AnalysisScope {
   private FileIndex getFileIndex() {
     final FileIndex fileIndex;
     if (myModule != null) {
-      fileIndex = ModuleRootManager.getInstance(myModule).getFileIndex();
+      fileIndex = ModuleFileIndex.getInstance(myModule);
     }
     else {
       fileIndex = ProjectRootManager.getInstance(myProject).getFileIndex();
@@ -344,7 +344,7 @@ public class AnalysisScope {
     List<Module> modules = myModule != null ? Collections.<Module>singletonList(myModule) : myModules;
     if (modules != null) {
       for (final Module module : modules) {
-        final FileIndex moduleFileIndex = ModuleRootManager.getInstance(module).getFileIndex();
+        final FileIndex moduleFileIndex = ModuleFileIndex.getInstance(module);
         if (!moduleFileIndex.iterateContent(new ContentIterator() {
           @Override
           public boolean processFile(@Nonnull VirtualFile fileOrDir) {

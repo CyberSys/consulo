@@ -16,21 +16,15 @@
 package com.intellij.navigation;
 
 import com.intellij.pom.Navigatable;
-import com.intellij.util.ArrayFactory;
 import consulo.annotation.DeprecationInfo;
-import javax.annotation.Nonnull;
+
 import javax.annotation.Nullable;
+import java.util.function.IntFunction;
 
 public interface NavigationItem extends Navigatable {
-  public static final NavigationItem[] EMPTY_ARRAY = new NavigationItem[0];
+  NavigationItem[] EMPTY_ARRAY = new NavigationItem[0];
 
-  public static ArrayFactory<NavigationItem> ARRAY_FACTORY = new ArrayFactory<NavigationItem>() {
-    @Nonnull
-    @Override
-    public NavigationItem[] create(int count) {
-      return count == 0 ? EMPTY_ARRAY : new NavigationItem[count];
-    }
-  };
+  IntFunction<NavigationItem[]> ARRAY_FACTORY = count -> count == 0 ? EMPTY_ARRAY : new NavigationItem[count];
 
   @Deprecated
   @DeprecationInfo("Use NavigationItem#EMPTY_ARRAY")

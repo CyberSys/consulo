@@ -15,10 +15,10 @@
  */
 package com.intellij.openapi.vfs.impl;
 
-import consulo.disposer.Disposable;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
+import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.vfs.*;
 import com.intellij.openapi.vfs.ex.VirtualFileManagerEx;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
@@ -26,20 +26,23 @@ import com.intellij.openapi.vfs.newvfs.CachingVirtualFileSystem;
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent;
 import com.intellij.util.EventDispatcher;
 import com.intellij.util.containers.ContainerUtil;
+import consulo.disposer.Disposable;
 import consulo.disposer.Disposer;
 import consulo.logging.Logger;
 import consulo.vfs.RefreshableFileSystem;
 import gnu.trove.THashMap;
-import javax.annotation.Nonnull;
-
-import javax.annotation.Nullable;
 import jakarta.inject.Inject;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 public class VirtualFileManagerImpl extends VirtualFileManagerEx {
+  private static final ExtensionPointName<VirtualFileSystem> EP_NAME = ExtensionPointName.create("com.intellij.virtualFileSystem");
+
   private static final Logger LOG = Logger.getInstance(VirtualFileManagerImpl.class);
 
   private final EventDispatcher<VirtualFileListener> myVirtualFileListenerMulticaster = EventDispatcher.create(VirtualFileListener.class);
@@ -52,7 +55,7 @@ public class VirtualFileManagerImpl extends VirtualFileManagerEx {
 
   @Inject
   public VirtualFileManagerImpl(@Nonnull Application application) {
-    this(application, VirtualFileSystem.EP_NAME.getExtensions());
+    this(application, EP_NAME.getExtensions());
   }
 
   public VirtualFileManagerImpl(@Nonnull Application application, @Nonnull VirtualFileSystem[] fileSystems) {

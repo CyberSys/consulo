@@ -15,7 +15,6 @@
  */
 package consulo.platform;
 
-import consulo.container.plugin.PluginId;
 import consulo.util.lang.StringUtil;
 
 import javax.annotation.Nonnull;
@@ -175,15 +174,11 @@ public abstract class PlatformBase implements Platform {
     }
   }
 
-  private final PluginId myPluginId;
-
   private final FileSystem myFileSystem;
   private final OperatingSystem myOperatingSystem;
   private final Jvm myJvm;
 
-  protected PlatformBase(@Nonnull String pluginId) {
-    myPluginId = PluginId.getId(pluginId);
-
+  protected PlatformBase() {
     myFileSystem = createFS();
     myOperatingSystem = createOS();
     myJvm = createJVM();
@@ -220,12 +215,6 @@ public abstract class PlatformBase implements Platform {
   @Override
   public OperatingSystem os() {
     return myOperatingSystem;
-  }
-
-  @Nonnull
-  @Override
-  public PluginId getPluginId() {
-    return myPluginId;
   }
 
   @Override

@@ -25,7 +25,6 @@ import com.intellij.compiler.make.CacheCorruptedException;
 import com.intellij.compiler.make.CacheUtils;
 import com.intellij.compiler.progress.CompilerTask;
 import com.intellij.diagnostic.IdeErrorsDialog;
-import consulo.container.PluginException;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.WriteAction;
@@ -34,8 +33,6 @@ import com.intellij.openapi.compiler.*;
 import com.intellij.openapi.compiler.ex.CompileContextEx;
 import com.intellij.openapi.compiler.ex.CompilerPathsEx;
 import com.intellij.openapi.compiler.generic.GenericCompiler;
-import consulo.logging.Logger;
-import consulo.container.plugin.PluginId;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.module.Module;
@@ -45,10 +42,7 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.roots.ContentEntry;
-import com.intellij.openapi.roots.ContentFolder;
-import com.intellij.openapi.roots.ModuleRootManager;
-import com.intellij.openapi.roots.ProjectRootManager;
+import com.intellij.openapi.roots.*;
 import com.intellij.openapi.roots.ex.ProjectRootManagerEx;
 import com.intellij.openapi.ui.MessageType;
 import com.intellij.openapi.ui.Messages;
@@ -88,6 +82,9 @@ import consulo.compiler.impl.TranslatingCompilerFilesMonitor;
 import consulo.compiler.make.DependencyCache;
 import consulo.compiler.make.impl.CompositeDependencyCache;
 import consulo.compiler.roots.CompilerPathsImpl;
+import consulo.container.PluginException;
+import consulo.container.plugin.PluginId;
+import consulo.logging.Logger;
 import consulo.roots.ContentFolderScopes;
 import consulo.roots.ContentFolderTypeProvider;
 import consulo.util.dataholder.Key;
@@ -399,7 +396,7 @@ public class CompileDriver {
           if (vFile == null) {
             continue;
           }
-          if (ModuleRootManager.getInstance(module).getFileIndex().isInSourceContent(vFile)) {
+          if (ModuleFileIndex.getInstance(module).isInSourceContent(vFile)) {
             // no need to add, is already marked as source
             continue;
           }

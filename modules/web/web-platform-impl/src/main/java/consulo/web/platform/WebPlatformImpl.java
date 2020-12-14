@@ -23,7 +23,7 @@ import consulo.platform.PlatformBase;
  */
 public class WebPlatformImpl extends PlatformBase {
   public WebPlatformImpl() {
-    super("consulo.platform.web");
+    super();
   }
 
   @Override
