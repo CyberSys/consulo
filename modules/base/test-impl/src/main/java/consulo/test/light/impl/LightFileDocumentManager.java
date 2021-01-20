@@ -28,6 +28,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * @author VISTALL
@@ -80,6 +81,11 @@ public class LightFileDocumentManager extends FileDocumentManager {
 
   @Override
   public void saveAllDocuments() {
+  }
+
+  @Override
+  public void saveDocuments(@Nonnull Predicate<Document> filter) {
+
   }
 
   @Override

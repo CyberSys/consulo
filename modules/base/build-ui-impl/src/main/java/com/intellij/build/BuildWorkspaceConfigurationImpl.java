@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2009 JetBrains s.r.o.
+ * Copyright 2013-2021 consulo.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,10 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.intellij.openapi.application;
+package com.intellij.build;
 
-import java.util.EventListener;
+import jakarta.inject.Singleton;
 
-public interface ModalityStateListener extends EventListener{
-  void beforeModalityStateChanged(boolean entering);
+/**
+ * @author VISTALL
+ * @since 17/01/2021
+ *
+ * from kotlin
+ */
+@Singleton
+public class BuildWorkspaceConfigurationImpl implements BuildWorkspaceConfiguration {
+  @Override
+  public boolean isShowFirstErrorInEditor() {
+    return true;
+  }
 }

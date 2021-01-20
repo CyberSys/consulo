@@ -22,8 +22,8 @@ public class EditorEventMulticasterImpl implements EditorEventMulticasterEx {
   private static final ExtensionPointName<DocumentListener> DOCUMENT_EP = ExtensionPointName.create("com.intellij.editorFactoryDocumentListener");
 
   private final EventDispatcher<DocumentListener> myDocumentMulticaster = EventDispatcher.create(DocumentListener.class);
-  private final EventDispatcher<PrioritizedInternalDocumentListener> myPrioritizedDocumentMulticaster =
-          EventDispatcher.create(PrioritizedInternalDocumentListener.class, Collections.singletonMap("getPriority", EditorDocumentPriorities.RANGE_MARKER));
+  private final EventDispatcher<PrioritizedDocumentListener> myPrioritizedDocumentMulticaster =
+          EventDispatcher.create(PrioritizedDocumentListener.class, Collections.singletonMap("getPriority", EditorDocumentPriorities.RANGE_MARKER));
   private final EventDispatcher<EditReadOnlyListener> myEditReadOnlyMulticaster = EventDispatcher.create(EditReadOnlyListener.class);
 
   private final EventDispatcher<EditorMouseListener> myEditorMouseMulticaster = EventDispatcher.create(EditorMouseListener.class);
@@ -131,7 +131,7 @@ public class EditorEventMulticasterImpl implements EditorEventMulticasterEx {
    *
    * @see EditorDocumentPriorities
    */
-  public void addPrioritizedDocumentListener(@Nonnull PrioritizedInternalDocumentListener listener, @Nonnull Disposable parent) {
+  public void addPrioritizedDocumentListener(@Nonnull PrioritizedDocumentListener listener, @Nonnull Disposable parent) {
     myPrioritizedDocumentMulticaster.addListener(listener, parent);
   }
 

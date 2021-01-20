@@ -21,8 +21,8 @@ import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.ThrowableComputable;
 import gnu.trove.THashSet;
 import org.jetbrains.annotations.Nls;
-
 import javax.annotation.Nonnull;
+
 import javax.annotation.Nullable;
 import javax.swing.*;
 import java.util.Set;
@@ -81,7 +81,21 @@ public abstract class ProgressManager extends ProgressIndicatorProvider {
     }
   }
 
+  /**
+   * Runs the specified operation in non-cancellable manner synchronously on the same thread were it was called.
+   *
+   * @param runnable the operation to execute
+   * @see ProgressManager#computeInNonCancelableSection(ThrowableComputable)
+   */
   public abstract void executeNonCancelableSection(@Nonnull Runnable runnable);
+
+  /**
+   * Runs the specified operation and return its result in non-cancellable manner synchronously on the same thread were it was called.
+   *
+   * @param computable the operation to execute
+   * @see ProgressManager#executeNonCancelableSection(Runnable)
+   */
+  public abstract <T, E extends Exception> T computeInNonCancelableSection(@Nonnull ThrowableComputable<T, E> computable) throws E;
 
   /**
    * Runs the specified operation in a background thread and shows a modal progress dialog in the

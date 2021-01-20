@@ -4,7 +4,6 @@ package com.intellij.openapi.progress.impl;
 import com.google.common.collect.ConcurrentHashMultiset;
 import com.intellij.concurrency.JobScheduler;
 import com.intellij.diagnostic.ThreadDumper;
-import consulo.disposer.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.ex.ApplicationEx;
@@ -12,7 +11,6 @@ import com.intellij.openapi.diagnostic.Attachment;
 import com.intellij.openapi.progress.*;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
-import consulo.disposer.Disposer;
 import com.intellij.openapi.util.Ref;
 import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.openapi.util.registry.Registry;
@@ -23,12 +21,15 @@ import com.intellij.util.ObjectUtil;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.containers.SmartHashSet;
+import consulo.disposer.Disposable;
+import consulo.disposer.Disposer;
 import consulo.logging.Logger;
 import consulo.util.collection.ConcurrentLongObjectMap;
+import consulo.util.lang.ref.SimpleReference;
 import org.jetbrains.annotations.Nls;
+import javax.annotation.Nonnull;
 import org.jetbrains.annotations.TestOnly;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.swing.*;
 import java.util.*;
@@ -192,7 +193,7 @@ public class CoreProgressManager extends ProgressManager implements Disposable {
 
   @Override
   public <T> T runProcess(@Nonnull final Computable<T> process, ProgressIndicator progress) throws ProcessCanceledException {
-    final Ref<T> ref = new Ref<>();
+    final SimpleReference<T> ref = new SimpleReference<>();
     runProcess(() -> ref.set(process.compute()), progress);
     return ref.get();
   }
@@ -211,6 +212,29 @@ public class CoreProgressManager extends ProgressManager implements Disposable {
         isInNonCancelableSection.remove();
       }
     }
+  }
+
+  @Override
+  public <T, E extends Exception> T computeInNonCancelableSection(@Nonnull ThrowableComputable<T, E> computable) throws E {
+    SimpleReference<T> result = SimpleReference.create();
+    SimpleReference<Exception> exception = SimpleReference.create();
+    executeNonCancelableSection(() -> {
+      try {
+        result.set(computable.compute());
+      }
+      catch (Exception t) {
+        exception.set(t);
+      }
+    });
+
+    Throwable t = exception.get();
+    if (t != null) {
+      ExceptionUtil.rethrowUnchecked(t);
+      @SuppressWarnings("unchecked") E e = (E)t;
+      throw e;
+    }
+
+    return result.get();
   }
 
   @Override

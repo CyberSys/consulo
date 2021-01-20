@@ -17,10 +17,8 @@
 package com.intellij.openapi.editor.impl;
 
 import com.intellij.openapi.application.ApplicationManager;
-import consulo.disposer.Disposable;
-import consulo.disposer.Disposer;
-import consulo.logging.Logger;
 import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.editor.ex.DocumentEx;
 import com.intellij.openapi.editor.ex.MarkupIterator;
 import com.intellij.openapi.editor.ex.MarkupModelEx;
@@ -29,14 +27,21 @@ import com.intellij.openapi.editor.impl.event.MarkupModelListener;
 import com.intellij.openapi.editor.markup.HighlighterTargetArea;
 import com.intellij.openapi.editor.markup.RangeHighlighter;
 import com.intellij.openapi.editor.markup.TextAttributes;
-import consulo.util.dataholder.UserDataHolderBase;
-import com.intellij.util.*;
+import com.intellij.util.BitUtil;
+import com.intellij.util.CommonProcessors;
+import com.intellij.util.DocumentUtil;
+import com.intellij.util.Processor;
 import com.intellij.util.containers.ContainerUtil;
+import consulo.disposer.Disposable;
+import consulo.disposer.Disposer;
+import consulo.logging.Logger;
+import consulo.util.dataholder.UserDataHolderBase;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class MarkupModelImpl extends UserDataHolderBase implements MarkupModelEx {
   private static final Logger LOG = Logger.getInstance(MarkupModelImpl.class);
@@ -72,13 +77,30 @@ public class MarkupModelImpl extends UserDataHolderBase implements MarkupModelEx
 
   @Override
   @Nullable
-  public RangeHighlighterEx addPersistentLineHighlighter(int lineNumber, int layer, TextAttributes textAttributes) {
+  public RangeHighlighterEx addPersistentLineHighlighter(@Nullable TextAttributesKey textAttributesKey, int lineNumber, int layer) {
+    return addPersistentLineHighlighter(textAttributesKey, null, lineNumber, layer);
+  }
+
+  @Override
+  @Nullable
+  public RangeHighlighterEx addPersistentLineHighlighter(int lineNumber, int layer, @Nullable TextAttributes textAttributes) {
+    return addPersistentLineHighlighter(null, textAttributes, lineNumber, layer);
+  }
+
+  @Nullable
+  private RangeHighlighterEx addPersistentLineHighlighter(@Nullable TextAttributesKey textAttributesKey, @Nullable TextAttributes textAttributes, int lineNumber, int layer) {
+
     if (isNotValidLine(lineNumber)) {
       return null;
     }
 
     int offset = DocumentUtil.getFirstNonSpaceCharOffset(getDocument(), lineNumber);
-    return addRangeHighlighter(PersistentRangeHighlighterImpl.create(this, offset, layer, HighlighterTargetArea.LINES_IN_RANGE, textAttributes, false), null);
+
+    Consumer<RangeHighlighterEx> changeAction = textAttributes == null ? null : ex -> {
+      ex.setTextAttributes(textAttributes);
+    };
+
+    return addRangeHighlighter(PersistentRangeHighlighterImpl.create(this, offset, layer, HighlighterTargetArea.LINES_IN_RANGE, textAttributesKey, false), changeAction);
   }
 
   private boolean isNotValidLine(int lineNumber) {
@@ -104,20 +126,20 @@ public class MarkupModelImpl extends UserDataHolderBase implements MarkupModelEx
 
   @Nonnull
   @Override
-  public RangeHighlighterEx addRangeHighlighterAndChangeAttributes(int startOffset,
+  public RangeHighlighterEx addRangeHighlighterAndChangeAttributes(@Nullable TextAttributesKey textAttributesKey,
+                                                                   int startOffset,
                                                                    int endOffset,
                                                                    int layer,
-                                                                   TextAttributes textAttributes,
                                                                    @Nonnull HighlighterTargetArea targetArea,
                                                                    boolean isPersistent,
-                                                                   @Nullable Consumer<? super RangeHighlighterEx> changeAttributesAction) {
+                                                                   @Nullable java.util.function.Consumer<? super RangeHighlighterEx> changeAttributesAction) {
     return addRangeHighlighter(isPersistent
-                               ? PersistentRangeHighlighterImpl.create(this, startOffset, layer, targetArea, textAttributes, true)
-                               : new RangeHighlighterImpl(this, startOffset, endOffset, layer, targetArea, textAttributes, false, false), changeAttributesAction);
+                               ? PersistentRangeHighlighterImpl.create(this, startOffset, layer, targetArea, textAttributesKey, true)
+                               : new RangeHighlighterImpl(this, startOffset, endOffset, layer, targetArea, textAttributesKey, false, false), changeAttributesAction);
   }
 
   @Nonnull
-  private RangeHighlighterEx addRangeHighlighter(@Nonnull RangeHighlighterImpl highlighter, @Nullable Consumer<? super RangeHighlighterEx> changeAttributesAction) {
+  private RangeHighlighterEx addRangeHighlighter(@Nonnull RangeHighlighterImpl highlighter, @Nullable java.util.function.Consumer<? super RangeHighlighterEx> changeAttributesAction) {
     ApplicationManager.getApplication().assertIsDispatchThread();
     myCachedHighlighters = null;
     if (changeAttributesAction != null) {
@@ -132,7 +154,8 @@ public class MarkupModelImpl extends UserDataHolderBase implements MarkupModelEx
     ApplicationManager.getApplication().assertIsDispatchThread();
     byte changeStatus = ((RangeHighlighterImpl)highlighter).changeAttributesNoEvents(changeAttributesAction);
     if (BitUtil.isSet(changeStatus, RangeHighlighterImpl.CHANGED_MASK)) {
-      fireAttributesChanged(highlighter, BitUtil.isSet(changeStatus, RangeHighlighterImpl.RENDERERS_CHANGED_MASK), BitUtil.isSet(changeStatus, RangeHighlighterImpl.FONT_STYLE_OR_COLOR_CHANGED_MASK));
+      fireAttributesChanged(highlighter, BitUtil.isSet(changeStatus, RangeHighlighterImpl.RENDERERS_CHANGED_MASK), BitUtil.isSet(changeStatus, RangeHighlighterImpl.FONT_STYLE_CHANGED_MASK),
+                            BitUtil.isSet(changeStatus, RangeHighlighterImpl.FOREGROUND_COLOR_CHANGED_MASK));
     }
   }
 
@@ -198,8 +221,12 @@ public class MarkupModelImpl extends UserDataHolderBase implements MarkupModelEx
 
   @Override
   public void fireAttributesChanged(@Nonnull RangeHighlighterEx segmentHighlighter, boolean renderersChanged, boolean fontStyleOrColorChanged) {
+    fireAttributesChanged(segmentHighlighter, renderersChanged, fontStyleOrColorChanged, fontStyleOrColorChanged);
+  }
+
+  void fireAttributesChanged(@Nonnull RangeHighlighterEx segmentHighlighter, boolean renderersChanged, boolean fontStyleChanged, boolean foregroundColorChanged) {
     for (MarkupModelListener listener : myListeners) {
-      listener.attributesChanged(segmentHighlighter, renderersChanged, fontStyleOrColorChanged);
+      listener.attributesChanged(segmentHighlighter, renderersChanged, fontStyleChanged, foregroundColorChanged);
     }
   }
 
@@ -261,7 +288,8 @@ public class MarkupModelImpl extends UserDataHolderBase implements MarkupModelEx
     startOffset = Math.max(0, startOffset);
     endOffset = Math.max(startOffset, endOffset);
     MarkupIterator<RangeHighlighterEx> exact = myHighlighterTree.overlappingIterator(new TextRangeInterval(startOffset, endOffset), onlyRenderedInGutter, onlyRenderedInScrollBar);
-    MarkupIterator<RangeHighlighterEx> lines = myHighlighterTreeForLines.overlappingIterator(roundToLineBoundaries(getDocument(), startOffset, endOffset), onlyRenderedInGutter, onlyRenderedInScrollBar);
+    MarkupIterator<RangeHighlighterEx> lines =
+            myHighlighterTreeForLines.overlappingIterator(roundToLineBoundaries(getDocument(), startOffset, endOffset), onlyRenderedInGutter, onlyRenderedInScrollBar);
     return MarkupIterator.mergeIterators(exact, lines, RangeHighlighterEx.BY_AFFECTED_START_OFFSET);
   }
 

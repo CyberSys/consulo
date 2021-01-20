@@ -68,6 +68,14 @@ public class Disposer {
     return ourInternal.setDebugMode(mode);
   }
 
+  /**
+   * @return object registered on {@code parentDisposable} which is equal to object, or {@code null} if not found
+   */
+  @Nullable
+  public static <T extends Disposable> T findRegisteredObject(@Nonnull Disposable parentDisposable, @Nonnull T object) {
+    return ourInternal.findRegisteredObject(parentDisposable, object);
+  }
+
   public static void assertIsEmpty() {
     ourInternal.assertIsEmpty();
   }

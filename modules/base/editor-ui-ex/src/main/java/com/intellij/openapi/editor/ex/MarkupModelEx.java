@@ -15,17 +15,18 @@
  */
 package com.intellij.openapi.editor.ex;
 
+import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.editor.impl.event.MarkupModelListener;
 import com.intellij.openapi.editor.markup.HighlighterTargetArea;
 import com.intellij.openapi.editor.markup.MarkupModel;
 import com.intellij.openapi.editor.markup.RangeHighlighter;
 import com.intellij.openapi.editor.markup.TextAttributes;
-import com.intellij.util.Consumer;
 import com.intellij.util.Processor;
 import consulo.disposer.Disposable;
-
 import javax.annotation.Nonnull;
+
 import javax.annotation.Nullable;
+import java.util.function.Consumer;
 
 /**
  * @author max
@@ -34,7 +35,17 @@ public interface MarkupModelEx extends MarkupModel {
   void dispose();
 
   @Nullable
-  RangeHighlighterEx addPersistentLineHighlighter(int lineNumber, int layer, TextAttributes textAttributes);
+  RangeHighlighterEx addPersistentLineHighlighter(@Nullable TextAttributesKey textAttributesKey, int lineNumber, int layer);
+
+  /**
+   * Consider using {@link #addPersistentLineHighlighter(TextAttributesKey, int, int)}
+   * unless it's really necessary.
+   * Creating a highlighter with hard-coded {@link TextAttributes} makes it stay the same in all {@link EditorColorsScheme}
+   * An editor can provide a custom scheme different from the global one, also a user can change the global scheme explicitly.
+   * Using the overload taking a {@link TextAttributesKey} will make the platform take care of all these cases.
+   */
+  @Nullable
+  RangeHighlighterEx addPersistentLineHighlighter(int lineNumber, int layer, @Nullable TextAttributes textAttributes);
 
   void fireAttributesChanged(@Nonnull RangeHighlighterEx segmentHighlighter, boolean renderersChanged, boolean fontStyleChanged);
 
@@ -62,13 +73,38 @@ public interface MarkupModelEx extends MarkupModel {
 
   // optimization: creates highlighter and fires only one event: highlighterCreated
   @Nonnull
-  RangeHighlighterEx addRangeHighlighterAndChangeAttributes(int startOffset,
+  RangeHighlighterEx addRangeHighlighterAndChangeAttributes(@Nullable TextAttributesKey textAttributesKey,
+                                                            int startOffset,
                                                             int endOffset,
                                                             int layer,
-                                                            TextAttributes textAttributes,
                                                             @Nonnull HighlighterTargetArea targetArea,
                                                             boolean isPersistent,
-                                                            Consumer<? super RangeHighlighterEx> changeAttributesAction);
+                                                            @Nullable Consumer<? super RangeHighlighterEx> changeAttributesAction);
+
+  /**
+   * Consider using {@link #addRangeHighlighterAndChangeAttributes(TextAttributesKey, int, int, int, HighlighterTargetArea, boolean, Consumer)}
+   * unless it's really necessary.
+   * Creating a highlighter with hard-coded {@link TextAttributes} makes it stay the same in all {@link EditorColorsScheme}
+   * An editor can provide a custom scheme different from the global one, also a user can change the global scheme explicitly.
+   * Using the overload taking a {@link TextAttributesKey} will make the platform take care of all these cases.
+   */
+  @Nonnull
+  default RangeHighlighterEx addRangeHighlighterAndChangeAttributes(int startOffset,
+                                                                    int endOffset,
+                                                                    int layer,
+                                                                    TextAttributes textAttributes,
+                                                                    @Nonnull HighlighterTargetArea targetArea,
+                                                                    boolean isPersistent,
+                                                                    @Nullable Consumer<? super RangeHighlighterEx> changeAttributesAction) {
+    return addRangeHighlighterAndChangeAttributes(null, startOffset, endOffset, layer, targetArea, isPersistent, ex -> {
+      if (textAttributes != null) {
+        ex.setTextAttributes(textAttributes);
+      }
+      if (changeAttributesAction != null) {
+        changeAttributesAction.accept(ex);
+      }
+    });
+  }
 
   // runs change attributes action and fires highlighterChanged event if there were changes
   void changeAttributesInBatch(@Nonnull RangeHighlighterEx highlighter, @Nonnull Consumer<? super RangeHighlighterEx> changeAttributesAction);

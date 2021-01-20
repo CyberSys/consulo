@@ -3,37 +3,37 @@
 package com.intellij.openapi.editor.impl;
 
 import com.intellij.diagnostic.Dumpable;
-import consulo.disposer.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.*;
 import com.intellij.openapi.editor.colors.EditorColors;
 import com.intellij.openapi.editor.event.DocumentEvent;
-import com.intellij.openapi.editor.ex.DocumentEx;
 import com.intellij.openapi.editor.ex.FoldingListener;
 import com.intellij.openapi.editor.ex.FoldingModelEx;
-import com.intellij.openapi.editor.ex.PrioritizedInternalDocumentListener;
+import com.intellij.openapi.editor.ex.PrioritizedDocumentListener;
 import com.intellij.openapi.editor.ex.util.EditorScrollingPositionKeeper;
 import com.intellij.openapi.editor.ex.util.EditorUtil;
 import com.intellij.openapi.editor.markup.TextAttributes;
-import consulo.disposer.Disposer;
 import com.intellij.openapi.util.Getter;
-import consulo.util.dataholder.Key;
 import com.intellij.openapi.util.ModificationTracker;
+import com.intellij.util.DocumentEventUtil;
 import com.intellij.util.DocumentUtil;
 import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.containers.MultiMap;
+import consulo.disposer.Disposable;
+import consulo.disposer.Disposer;
 import consulo.logging.Logger;
+import consulo.util.dataholder.Key;
 import gnu.trove.THashSet;
+import javax.annotation.Nonnull;
 import org.jetbrains.annotations.TestOnly;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.awt.*;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class FoldingModelImpl extends InlayModel.SimpleAdapter implements FoldingModelEx, PrioritizedInternalDocumentListener, Dumpable, ModificationTracker {
+public class FoldingModelImpl extends InlayModel.SimpleAdapter implements FoldingModelEx, PrioritizedDocumentListener, Dumpable, ModificationTracker {
   private static final Logger LOG = Logger.getInstance(FoldingModelImpl.class);
 
   public static final Key<Boolean> SELECT_REGION_ON_CARET_NEARBY = Key.create("select.region.on.caret.nearby");
@@ -527,19 +527,16 @@ public class FoldingModelImpl extends InlayModel.SimpleAdapter implements Foldin
   @Override
   public void documentChanged(@Nonnull DocumentEvent event) {
     try {
-      if (!((DocumentEx)event.getDocument()).isInBulkUpdate()) {
+      if (event.getDocument().isInBulkUpdate()) return;
+      if (DocumentEventUtil.isMoveInsertion(event)) {
+        myFoldTree.rebuild();
+      }
+      else {
         updateCachedOffsets();
       }
     }
     finally {
       myDocumentChangeProcessed = true;
-    }
-  }
-
-  @Override
-  public void moveTextHappened(@Nonnull Document document, int start, int end, int base) {
-    if (!myEditor.getDocument().isInBulkUpdate()) {
-      myFoldTree.rebuild();
     }
   }
 
@@ -676,7 +673,7 @@ public class FoldingModelImpl extends InlayModel.SimpleAdapter implements Foldin
     }
   }
 
-  private class MyMarkerTree extends HardReferencingRangeMarkerTree<FoldRegionImpl> {
+  private final class MyMarkerTree extends HardReferencingRangeMarkerTree<FoldRegionImpl> {
     private boolean inCollectCall;
 
     private MyMarkerTree(Document document) {
@@ -693,8 +690,8 @@ public class FoldingModelImpl extends InlayModel.SimpleAdapter implements Foldin
 
     @Nonnull
     @Override
-    protected Node<FoldRegionImpl> createNewNode(@Nonnull FoldRegionImpl key, int start, int end, boolean greedyToLeft, boolean greedyToRight, boolean stickingToRight, int layer) {
-      return new Node<FoldRegionImpl>(this, key, start, end, greedyToLeft, greedyToRight, stickingToRight) {
+    protected RMNode<FoldRegionImpl> createNewNode(@Nonnull FoldRegionImpl key, int start, int end, boolean greedyToLeft, boolean greedyToRight, boolean stickingToRight, int layer) {
+      return new RMNode<FoldRegionImpl>(this, key, start, end, greedyToLeft, greedyToRight, stickingToRight) {
         @Override
         void onRemoved() {
           for (Getter<FoldRegionImpl> getter : intervals) {
@@ -714,27 +711,28 @@ public class FoldingModelImpl extends InlayModel.SimpleAdapter implements Foldin
           }
           else {
             otherNode.setValid(false);
-            ((RMNode)otherNode).onRemoved();
+            ((RMNode<FoldRegionImpl>)otherNode).onRemoved();
           }
         }
       };
     }
 
     @Override
-    boolean collectAffectedMarkersAndShiftSubtrees(@Nullable IntervalNode<FoldRegionImpl> root, @Nonnull DocumentEvent e, @Nonnull List<? super IntervalNode<FoldRegionImpl>> affected) {
-      if (inCollectCall) return super.collectAffectedMarkersAndShiftSubtrees(root, e, affected);
+    boolean collectAffectedMarkersAndShiftSubtrees(@Nullable IntervalNode<FoldRegionImpl> root, int start, int end, int lengthDelta, @Nonnull List<? super IntervalNode<FoldRegionImpl>> affected) {
+      if (inCollectCall) return super.collectAffectedMarkersAndShiftSubtrees(root, start, end, lengthDelta, affected);
       inCollectCall = true;
       boolean result;
       try {
-        result = super.collectAffectedMarkersAndShiftSubtrees(root, e, affected);
+        result = super.collectAffectedMarkersAndShiftSubtrees(root, start, end, lengthDelta, affected);
       }
       finally {
         inCollectCall = false;
       }
-      if (e.getOldLength() > 0 /* document change can cause regions to become equal*/) {
+      final int oldLength = end - start;
+      if (oldLength > 0 /* document change can cause regions to become equal*/) {
         for (Object o : affected) {
           //noinspection unchecked
-          Node<FoldRegionImpl> node = (Node<FoldRegionImpl>)o;
+          RMNode<FoldRegionImpl> node = (RMNode<FoldRegionImpl>)o;
           FoldRegionImpl region = getRegion(node);
           // region with the largest metric value is kept when several regions become identical after document change
           // we want the largest collapsed region to survive

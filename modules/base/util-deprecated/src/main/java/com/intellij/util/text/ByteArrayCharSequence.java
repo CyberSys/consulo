@@ -1,32 +1,18 @@
-/*
- * Copyright 2000-2016 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package com.intellij.util.text;
 
+import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.text.CharSequenceWithStringHash;
 import com.intellij.openapi.util.text.StringUtil;
-import com.intellij.openapi.vfs.CharsetToolkit;
-import consulo.annotation.DeprecationInfo;
-
+import consulo.annotation.ReviewAfterMigrationToJRE;
 import javax.annotation.Nonnull;
+
 import javax.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-//@ReviseWhenPortedToJDK("9")
-public class ByteArrayCharSequence implements CharSequenceWithStringHash {
+@ReviewAfterMigrationToJRE(9)
+public final class ByteArrayCharSequence implements CharSequenceWithStringHash {
   private final int myStart;
   private final int myEnd;
   private transient int hash;
@@ -46,7 +32,7 @@ public class ByteArrayCharSequence implements CharSequenceWithStringHash {
   public int hashCode() {
     int h = hash;
     if (h == 0) {
-      hash = h = StringUtil.stringHashCode(this, myStart, myEnd);
+      hash = h = StringUtil.stringHashCode(this, 0, length());
     }
     return h;
   }
@@ -64,13 +50,19 @@ public class ByteArrayCharSequence implements CharSequenceWithStringHash {
   @Nonnull
   @Override
   public CharSequence subSequence(int start, int end) {
-    return start == 0 && end == length() ? this : new CharSequenceSubSequence(this, start, end);
+    return start == 0 && end == length() ? this : new ByteArrayCharSequence(myChars, myStart + start, myStart + end);
   }
 
   @Override
   @Nonnull
   public String toString() {
     return new String(myChars, myStart, length(), StandardCharsets.ISO_8859_1);
+  }
+
+  public void getChars(int start, int end, char[] dest, int pos) {
+    for (int idx = start; idx < end; idx++) {
+      dest[idx - start + pos] = (char)(myChars[idx + myStart] & 0xFF);
+    }
   }
 
   /**
@@ -86,9 +78,14 @@ public class ByteArrayCharSequence implements CharSequenceWithStringHash {
    * @return instance of {@link ByteArrayCharSequence} if the supplied string can be stored internally
    * as a byte array of 8-bit code points (for more compact representation); its {@code string} argument otherwise
    */
+  @ReviewAfterMigrationToJRE(9)
   @Nonnull
   public static CharSequence convertToBytesIfPossible(@Nonnull CharSequence string) {
-    return string;
+    if (SystemInfo.IS_AT_LEAST_JAVA9) return string; // see JEP 254: Compact Strings
+    if (string.length() == 0) return "";
+    if (string instanceof ByteArrayCharSequence) return string;
+    byte[] bytes = toBytesIfPossible(string);
+    return bytes == null ? string : new ByteArrayCharSequence(bytes);
   }
 
   @Nonnull

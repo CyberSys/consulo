@@ -2,8 +2,8 @@
 package com.intellij.openapi.editor.impl.event;
 
 import com.intellij.openapi.editor.ex.RangeHighlighterEx;
-import javax.annotation.Nonnull;
 
+import javax.annotation.Nonnull;
 import java.util.EventListener;
 
 public interface MarkupModelListener extends EventListener {
@@ -16,6 +16,10 @@ public interface MarkupModelListener extends EventListener {
   }
 
   default void attributesChanged(@Nonnull RangeHighlighterEx highlighter, boolean renderersChanged, boolean fontStyleOrColorChanged) {
+  }
+
+  default void attributesChanged(@Nonnull RangeHighlighterEx highlighter, boolean renderersChanged, boolean fontStyleChanged, boolean foregroundColorChanged) {
+    attributesChanged(highlighter, renderersChanged, fontStyleChanged || foregroundColorChanged);
   }
 
   /**

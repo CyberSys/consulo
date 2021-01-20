@@ -58,6 +58,8 @@
     <module>modules/base/base-icon-library</module>
     <module>modules/base/built-in-server-api</module>
     <module>modules/base/built-in-server-impl</module>
+    <module>modules/base/build-ui-api</module>
+    <module>modules/base/build-ui-impl</module>
     <module>modules/base/core-api</module>
     <module>modules/base/core-impl</module>
     <module>modules/base/compiler-api</module>

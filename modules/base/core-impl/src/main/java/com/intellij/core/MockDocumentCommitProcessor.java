@@ -15,12 +15,13 @@
  */
 package com.intellij.core;
 
-import com.intellij.openapi.application.TransactionId;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.impl.DocumentCommitProcessor;
 import org.jetbrains.annotations.NonNls;
+
 import javax.annotation.Nonnull;
 
 /**
@@ -33,9 +34,9 @@ class MockDocumentCommitProcessor implements DocumentCommitProcessor {
   }
 
   @Override
-  public void commitAsynchronously(@Nonnull Project project,
-                                   @Nonnull Document document,
-                                   @NonNls @Nonnull Object reason,
-                                   @Nonnull TransactionId context) {
+  public void commitAsynchronously(@Nonnull Project project, @Nonnull Document document, @NonNls @Nonnull Object reason, @Nonnull ModalityState modality) {
+
   }
+
+
 }

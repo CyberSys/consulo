@@ -29,6 +29,7 @@ import consulo.localize.LocalizeValue;
 import consulo.ui.UIAccess;
 import consulo.ui.annotation.RequiredUIAccess;
 import consulo.ui.image.Image;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.awt.*;
@@ -285,6 +286,34 @@ public interface Application extends ComponentManager {
    * @param modalityState the state in which the runnable will be executed.
    */
   void invokeAndWait(@Nonnull Runnable runnable, @Nonnull ModalityState modalityState);
+
+  /**
+   * Causes {@code runnable} to be executed asynchronously under Write Intent lock on some thread,
+   * with {@link ModalityState#defaultModalityState()} modality state.
+   *
+   * @param action the runnable to execute.
+   */
+  void invokeLaterOnWriteThread(@NotNull Runnable action);
+
+  /**
+   * Causes {@code runnable} to be executed asynchronously under Write Intent lock on some thread,
+   * when IDE is in the specified modality state (or a state with less modal dialogs open).
+   *
+   * @param action the runnable to execute.
+   * @param modal  the state in which action will be executed
+   */
+  void invokeLaterOnWriteThread(@NotNull Runnable action, @NotNull ModalityState modal);
+
+  /**
+   * Causes {@code runnable} to be executed asynchronously under Write Intent lock on some thread,
+   * when IDE is in the specified modality state (or a state with less modal dialogs open)
+   * - unless the expiration condition is fulfilled.
+   *
+   * @param action  the runnable to execute.
+   * @param modal   the state in which action will be executed
+   * @param expired condition to check before execution.
+   */
+  void invokeLaterOnWriteThread(@NotNull Runnable action, @NotNull ModalityState modal, @NotNull Condition<?> expired);
 
   /**
    * Returns the current modality state for the Swing dispatch thread.

@@ -15,31 +15,38 @@
  */
 package com.intellij.openapi.progress.util;
 
-import consulo.disposer.Disposable;
+import com.intellij.ide.IdeEventQueue;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
+import com.intellij.openapi.application.ex.ApplicationManagerEx;
 import com.intellij.openapi.application.impl.LaterInvocator;
 import com.intellij.openapi.application.impl.ModalityStateEx;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.TaskInfo;
+import com.intellij.openapi.progress.impl.BlockingProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Comparing;
-import consulo.disposer.Disposer;
 import com.intellij.openapi.util.EmptyRunnable;
 import com.intellij.openapi.wm.IdeFocusManager;
 import com.intellij.openapi.wm.ex.ProgressIndicatorEx;
 import com.intellij.util.IncorrectOperationException;
 import com.intellij.util.messages.Topic;
+import com.intellij.util.ui.EDT;
 import com.intellij.util.ui.UIUtil;
+import consulo.disposer.Disposable;
+import consulo.disposer.Disposer;
 import consulo.logging.Logger;
 import consulo.progress.util.ProgressDialog;
 import consulo.progress.util.ProgressDialogFactory;
+import consulo.ui.annotation.RequiredUIAccess;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.util.concurrent.CompletableFuture;
 
 public class ProgressWindow extends ProgressIndicatorBase implements BlockingProgressIndicator, Disposable {
   private static final Logger LOG = Logger.getInstance(ProgressWindow.class);
@@ -173,14 +180,11 @@ public class ProgressWindow extends ProgressIndicatorBase implements BlockingPro
     }
   }
 
-  @Override
-  public void startBlocking() {
-    startBlocking(EmptyRunnable.getInstance());
-  }
 
-  public void startBlocking(@Nonnull Runnable init) {
-    ApplicationManager.getApplication().assertIsDispatchThread();
-    synchronized (this) {
+  @Override
+  public void startBlocking(@NotNull Runnable init, @NotNull CompletableFuture<?> stopCondition) {
+    EDT.assertIsEdt();
+    synchronized (getLock()) {
       LOG.assertTrue(!isRunning());
       LOG.assertTrue(!myStoppedAlready);
     }
@@ -189,11 +193,29 @@ public class ProgressWindow extends ProgressIndicatorBase implements BlockingPro
     init.run();
 
     try {
-      myDialog.startBlocking();
+      ApplicationManagerEx.getApplicationEx().runUnlockingIntendedWrite(() -> {
+        initializeOnEdtIfNeeded();
+        // guarantee AWT event after the future is done will be pumped and loop exited
+        stopCondition.thenRun(() -> SwingUtilities.invokeLater(EmptyRunnable.INSTANCE));
+        IdeEventQueue.getInstance().pumpEventsForHierarchy(myDialog.myPanel, stopCondition, event -> {
+          if (isCancellationEvent(event)) {
+            cancel();
+            return true;
+          }
+          return false;
+        });
+        return null;
+      });
     }
     finally {
       exitModality();
     }
+  }
+
+  @RequiredUIAccess
+  protected void initializeOnEdtIfNeeded() {
+    EDT.assertIsEdt();
+    initializeDialog();
   }
 
   final boolean isCancellationEvent(@Nullable AWTEvent event) {

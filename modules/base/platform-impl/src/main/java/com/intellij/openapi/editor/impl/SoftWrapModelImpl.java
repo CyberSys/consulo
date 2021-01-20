@@ -2,10 +2,8 @@
 package com.intellij.openapi.editor.impl;
 
 import com.intellij.diagnostic.Dumpable;
-import consulo.disposer.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Attachment;
-import consulo.logging.Logger;
 import com.intellij.openapi.editor.*;
 import com.intellij.openapi.editor.colors.impl.FontPreferencesImpl;
 import com.intellij.openapi.editor.event.DocumentEvent;
@@ -15,16 +13,23 @@ import com.intellij.openapi.editor.impl.softwrap.*;
 import com.intellij.openapi.editor.impl.softwrap.mapping.CachingSoftWrapDataMapper;
 import com.intellij.openapi.editor.impl.softwrap.mapping.SoftWrapApplianceManager;
 import com.intellij.openapi.editor.impl.softwrap.mapping.SoftWrapAwareDocumentParsingListenerAdapter;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Segment;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.openapi.util.registry.Registry;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiDocumentManager;
+import com.intellij.ui.EditorNotifications;
+import com.intellij.util.DocumentEventUtil;
 import com.intellij.util.DocumentUtil;
 import com.intellij.util.containers.ContainerUtil;
+import consulo.disposer.Disposable;
+import consulo.logging.Logger;
 import kava.beans.PropertyChangeEvent;
 import kava.beans.PropertyChangeListener;
-import javax.annotation.Nonnull;
-
 import org.jetbrains.annotations.TestOnly;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.awt.*;
 import java.util.ArrayList;
@@ -42,7 +47,7 @@ import java.util.List;
  *
  * @author Denis Zhdanov
  */
-public class SoftWrapModelImpl extends InlayModel.SimpleAdapter implements SoftWrapModelEx, PrioritizedInternalDocumentListener, FoldingListener, PropertyChangeListener, Dumpable, Disposable {
+public class SoftWrapModelImpl extends InlayModel.SimpleAdapter implements SoftWrapModelEx, PrioritizedDocumentListener, FoldingListener, PropertyChangeListener, Dumpable, Disposable {
 
   private static final Logger LOG = Logger.getInstance(SoftWrapModelImpl.class);
 
@@ -411,23 +416,59 @@ public class SoftWrapModelImpl extends InlayModel.SimpleAdapter implements SoftW
     }
     myUpdateInProgress = false;
     if (!isSoftWrappingEnabled()) {
-      return;
-    }
-    myApplianceManager.documentChanged(event, myAfterLineEndInlayUpdated);
-  }
-
-  @Override
-  public void moveTextHappened(@Nonnull Document document, int start, int end, int base) {
-    if (myBulkUpdateInProgress) {
-      return;
-    }
-    if (!isSoftWrappingEnabled()) {
+      if (shouldSoftWrapsBeForced(event)) {
+        forceSoftWraps();
+        if (isSoftWrappingEnabled()) {
+          myDirty = false;
+          myApplianceManager.recalculateAll();
+          return;
+        }
+      }
       myDirty = true;
       return;
     }
-    int textLength = document.getTextLength();
-    // adding +1, as inlays at the end of the moved range stick to the following text (and impact its layout)
-    myApplianceManager.recalculate(Arrays.asList(new TextRange(start, Math.min(textLength, end + 1)), new TextRange(base, Math.min(textLength, base + end - start + 1))));
+    myApplianceManager.documentChanged(event, myAfterLineEndInlayUpdated);
+    if (DocumentEventUtil.isMoveInsertion(event)) {
+      int dstOffset = event.getOffset();
+      int srcOffset = event.getMoveOffset();
+      int textLength = event.getDocument().getTextLength();
+      // adding +1, as inlays at the end of the moved range stick to the following text (and impact its layout)
+      myApplianceManager.recalculate(Arrays.asList(new TextRange(srcOffset, Math.min(textLength, srcOffset + event.getNewLength() + 1)),
+                                                   new TextRange(dstOffset, Math.min(textLength, dstOffset + event.getNewLength() + 1))));
+    }
+  }
+
+  private void forceSoftWraps() {
+    ((SettingsImpl)myEditor.getSettings()).setUseSoftWrapsQuiet();
+    myEditor.putUserData(DesktopEditorImpl.FORCED_SOFT_WRAPS, Boolean.TRUE);
+    myUseSoftWraps = areSoftWrapsEnabledInEditor();
+    Project project = myEditor.getProject();
+    VirtualFile file = myEditor.getVirtualFile();
+    if (project != null && file != null) {
+      EditorNotifications.getInstance(project).updateNotifications(file);
+    }
+  }
+
+  public boolean shouldSoftWrapsBeForced() {
+    return shouldSoftWrapsBeForced(null);
+  }
+
+  private boolean shouldSoftWrapsBeForced(@Nullable DocumentEvent event) {
+    Project project = myEditor.getProject();
+    Document document = myEditor.getDocument();
+    if (project != null && PsiDocumentManager.getInstance(project).isDocumentBlockedByPsi(document)) {
+      // Disable checking for files in intermediate states - e.g. for files during refactoring.
+      return false;
+    }
+    int lineWidthLimit = Registry.intValue("editor.soft.wrap.force.limit");
+    int startLine = event == null ? 0 : document.getLineNumber(event.getOffset());
+    int endLine = event == null ? document.getLineCount() - 1 : document.getLineNumber(event.getOffset() + event.getNewLength());
+    for (int i = startLine; i <= endLine; i++) {
+      if (document.getLineEndOffset(i) - document.getLineStartOffset(i) > lineWidthLimit) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void onBulkDocumentUpdateStarted() {

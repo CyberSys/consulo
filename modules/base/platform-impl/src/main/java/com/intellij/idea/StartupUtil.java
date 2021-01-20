@@ -56,8 +56,14 @@ import java.util.function.Consumer;
  */
 public class StartupUtil {
   private static ImportantFolderLocker ourFolderLocker;
+  // See ApplicationImpl.USE_SEPARATE_WRITE_THREAD
+  private static final String USE_SEPARATE_WRITE_THREAD_PROPERTY = "idea.use.separate.write.thread";
 
   private StartupUtil() {
+  }
+
+  public static boolean isUsingSeparateWriteThread() {
+    return Boolean.getBoolean(USE_SEPARATE_WRITE_THREAD_PROPERTY);
   }
 
   public synchronized static void addExternalInstanceListener(@Nonnull Consumer<CommandLineArgs> consumer) {

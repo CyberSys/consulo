@@ -1,8 +1,7 @@
-// Copyright 2000-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package com.intellij.openapi.fileEditor;
 
 import com.intellij.openapi.application.Application;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.EditorBundle;
 import com.intellij.openapi.project.Project;
@@ -10,8 +9,11 @@ import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.io.FileUtilRt;
 import com.intellij.openapi.vfs.SavingRequestor;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.FileViewProvider;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+
+import java.util.function.Predicate;
 
 /**
  * Tracks the correspondence between {@link VirtualFile} instances and corresponding {@link Document} instances.
@@ -20,14 +22,15 @@ import javax.annotation.Nullable;
 public abstract class FileDocumentManager implements SavingRequestor {
   @Nonnull
   public static FileDocumentManager getInstance() {
-    return ApplicationManager.getApplication().getComponent(FileDocumentManager.class);
+    return Application.get().getInstance(FileDocumentManager.class);
   }
 
   /**
    * Returns the document for the specified virtual file.<p/>
    * <p>
-   * Documents are cached on weak or strong references, depending on the nature of the virtual file. If the document for the given virtual file is not yet cached,
-   * the file's contents are read from VFS and loaded into heap memory. An appropriate encoding is used. All line separators are converted to {@code \n}.<p/>
+   * Documents are cached on weak or strong references, depending on the nature of the virtual file. If the document
+   * for the given virtual file is not yet cached, the file's contents are read from VFS and loaded into heap memory.
+   * An appropriate encoding is used. All line separators are converted to {@code \n}.<p/>
    * <p>
    * Should be invoked in a read action.
    *
@@ -68,6 +71,17 @@ public abstract class FileDocumentManager implements SavingRequestor {
    * Should be invoked on the event dispatch thread.
    */
   public abstract void saveAllDocuments();
+
+  /**
+   * Saves unsaved documents which pass provided filter to disk. This operation can modify documents that will be saved
+   * (due to 'Strip trailing spaces on Save' functionality). When saving, {@code \n} line separators are converted into
+   * the ones used normally on the system, or the ones explicitly specified by the user. Encoding settings are honored.<p/>
+   * <p>
+   * Should be invoked on the event dispatch thread.
+   *
+   * @param filter the filter for documents to save. If it returns `true`, the document will be saved.
+   */
+  public abstract void saveDocuments(@Nonnull Predicate<Document> filter);
 
   /**
    * Saves the specified document to disk. This operation can modify the document (due to 'Strip
@@ -158,6 +172,16 @@ public abstract class FileDocumentManager implements SavingRequestor {
    * @param files the files to discard the changes for.
    */
   public abstract void reloadFiles(@Nonnull VirtualFile... files);
+
+  //@ApiStatus.Internal
+  public void reloadBinaryFiles() {
+  }
+
+  //@ApiStatus.Internal
+  @Nullable
+  public FileViewProvider findCachedPsiInAnyProject(@Nonnull VirtualFile file) {
+    return null;
+  }
 
   /**
    * Stores the write access status (true if the document has the write access; false otherwise)

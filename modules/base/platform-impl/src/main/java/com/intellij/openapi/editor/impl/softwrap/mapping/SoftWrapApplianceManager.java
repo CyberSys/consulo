@@ -202,6 +202,15 @@ public class SoftWrapApplianceManager implements Dumpable {
     return true;
   }
 
+  public void recalculateAll() {
+    reset();
+    myStorage.removeAll();
+    myVisibleAreaWidth = myAvailableWidth;
+    myCustomIndentUsedLastTime = myEditor.getSettings().isUseCustomSoftWrapIndent();
+    myCustomIndentValueUsedLastTime = myEditor.getSettings().getCustomSoftWrapIndent();
+    recalculateSoftWraps();
+  }
+
   private void onRecalculationEnd() {
     updateLastTopLeftCornerOffset();
     for (SoftWrapAwareDocumentParsingListener listener : myListeners) {

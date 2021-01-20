@@ -11,7 +11,7 @@ import javax.annotation.Nullable;
 import javax.swing.*;
 import java.awt.*;
 
-abstract class InlayImpl<R extends EditorCustomElementRenderer, T extends InlayImpl> extends RangeMarkerWithGetterImpl implements Inlay<R> {
+abstract class InlayImpl<R extends EditorCustomElementRenderer, T extends InlayImpl> extends RangeMarkerImpl implements Inlay<R> {
   static final Key<Integer> OFFSET_BEFORE_DISPOSAL = Key.create("inlay.offset.before.disposal");
 
   @Nonnull
@@ -24,7 +24,7 @@ abstract class InlayImpl<R extends EditorCustomElementRenderer, T extends InlayI
 
   @SuppressWarnings("AbstractMethodCallInConstructor")
   InlayImpl(@Nonnull DesktopEditorImpl editor, int offset, boolean relatesToPrecedingText, @Nonnull R renderer) {
-    super(editor.getDocument(), offset, offset, false);
+    super(editor.getDocument(), offset, offset, false, true);
     myEditor = editor;
     myRelatedToPrecedingText = relatesToPrecedingText;
     myRenderer = renderer;

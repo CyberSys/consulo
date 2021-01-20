@@ -25,6 +25,7 @@ import com.intellij.openapi.command.CommandProcessor;
 import com.intellij.openapi.diagnostic.Attachment;
 import com.intellij.openapi.progress.*;
 import com.intellij.openapi.progress.impl.CoreProgressManager;
+import com.intellij.openapi.progress.impl.ProgressResult;
 import com.intellij.openapi.progress.util.PotemkinProgress;
 import com.intellij.openapi.progress.util.ProgressWindow;
 import com.intellij.openapi.project.Project;
@@ -152,6 +153,12 @@ public class DesktopApplicationImpl extends BaseApplication {
       return Thread.currentThread();
     });
 
+    myLock = new ReadMostlyRWLock(edt);
+
+    // Acquire IW lock on EDT indefinitely in legacy mode
+    if (!USE_SEPARATE_WRITE_THREAD) {
+      EdtInvocationManager.invokeAndWaitIfNeeded(() -> acquireWriteIntentLock(getClass()));
+    }
     NoSwingUnderWriteAction.watchForEvents(this);
   }
 
@@ -512,23 +519,34 @@ public class DesktopApplicationImpl extends BaseApplication {
                                             @Nullable JComponent parentComponent,
                                             @Nullable @Nls(capitalization = Nls.Capitalization.Title) String cancelText,
                                             @Nonnull Consumer<? super ProgressIndicator> action) {
-    return runWriteActionWithClass(action.getClass(), () -> {
-      PotemkinProgress indicator = new PotemkinProgress(title, project, parentComponent, cancelText);
-      indicator.runInSwingThread(() -> action.accept(indicator));
-      return !indicator.isCanceled();
-    });
+    if (!USE_SEPARATE_WRITE_THREAD) {
+      // Use Potemkin progress in legacy mode; in the new model such execution will always move to a separate thread.
+      return runWriteActionWithClass(action.getClass(), () -> {
+        PotemkinProgress indicator = new PotemkinProgress(title, project, parentComponent, cancelText);
+        indicator.runInSwingThread(() -> action.accept(indicator));
+        return !indicator.isCanceled();
+      });
+    }
+
+    ProgressWindow progress = createProgressWindow(title, cancelText != null, true, project, parentComponent, cancelText);
+
+    ProgressResult<Object> result =
+            new ProgressRunner<>(() -> runWriteAction(() -> action.accept(progress))).sync().onThread(ProgressRunner.ThreadToUse.WRITE).withProgress(progress).modal().submitAndGet();
+
+    if (result.getThrowable() instanceof RuntimeException) {
+      throw (RuntimeException)result.getThrowable();
+    }
+
+    return true;
   }
 
   private <T, E extends Throwable> T runWriteActionWithClass(@Nonnull Class<?> clazz, @Nonnull ThrowableComputable<T, E> computable) throws E {
-    boolean needUnlock = startWriteUI(clazz);
+    startWrite(clazz);
     try {
       return computable.compute();
     }
     finally {
       endWrite(clazz);
-      if(needUnlock) {
-        releaseWriteIntentLock();
-      }
     }
   }
 

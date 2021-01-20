@@ -16,24 +16,38 @@
 package consulo.application.internal;
 
 import com.intellij.openapi.application.Application;
-import com.intellij.openapi.util.ThrowableComputable;
-
-import javax.annotation.Nonnull;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * @author VISTALL
  * @since 2020-05-24
  */
 public interface ApplicationWithIntentWriteLock extends Application {
-  default void acquireWriteIntentLock() {
-    throw new UnsupportedOperationException();
+  /**
+   * Acquires IW lock if it's not acquired by the current thread.
+   *
+   * @param invokedClassFqn fully qualified name of the class requiring the write intent lock.
+   */
+  default void acquireWriteIntentLock(@NotNull String invokedClassFqn) {
   }
 
+  /**
+   * Releases IW lock.
+   */
   default void releaseWriteIntentLock() {
-    throw new UnsupportedOperationException();
   }
 
-  default <T, E extends Throwable> T runWriteActionNoIntentLock(@Nonnull ThrowableComputable<T, E> computation) throws E {
-    throw new UnsupportedOperationException();
+  /**
+   * Runs the specified action under Write Intent lock. Can be called from any thread. The action is executed immediately
+   * if no write intent action is currently running, or blocked until the currently running write intent action completes.
+   * <p>
+   * This method is used to implement higher-level API, please do not use it directly.
+   * Use {@link #invokeLaterOnWriteThread}, {@link com.intellij.openapi.application.WriteThread} or {@link com.intellij.openapi.application.AppUIExecutor#onWriteThread()} to
+   * run code under Write Intent lock asynchronously.
+   *
+   * @param action the action to run
+   */
+  default void runIntendedWriteActionOnCurrentThread(@NotNull Runnable action) {
+    action.run();
   }
 }

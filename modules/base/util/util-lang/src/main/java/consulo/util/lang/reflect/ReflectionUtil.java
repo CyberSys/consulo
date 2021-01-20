@@ -128,6 +128,61 @@ public class ReflectionUtil {
     }
   }
 
+
+  @Nullable
+  public static Field findFieldInHierarchy(@Nonnull Class<?> rootClass, @Nonnull Predicate<? super Field> checker) {
+    for (Class<?> aClass = rootClass; aClass != null; aClass = aClass.getSuperclass()) {
+      for (Field field : aClass.getDeclaredFields()) {
+        if (checker.test(field)) {
+          field.setAccessible(true);
+          return field;
+        }
+      }
+    }
+
+    // ok, let's check interfaces
+    return processInterfaces(rootClass.getInterfaces(), new HashSet<>(), checker);
+  }
+
+  @Nullable
+  private static Field processInterfaces(@Nonnull Class<?>[] interfaces, @Nonnull Set<? super Class<?>> visited, @Nonnull Predicate<? super Field> checker) {
+    for (Class<?> anInterface : interfaces) {
+      if (!visited.add(anInterface)) {
+        continue;
+      }
+
+      for (Field field : anInterface.getDeclaredFields()) {
+        if (checker.test(field)) {
+          field.setAccessible(true);
+          return field;
+        }
+      }
+
+      Field field = processInterfaces(anInterface.getInterfaces(), visited, checker);
+      if (field != null) {
+        return field;
+      }
+    }
+    return null;
+  }
+
+  @Nullable
+  public static <T> T getFieldValue(@Nonnull Field field, @Nullable Object object) {
+    try {
+      //noinspection unchecked
+      return (T)field.get(object);
+    }
+    catch (IllegalAccessException e) {
+      LOG.debug(e.getMessage(), e);
+      return null;
+    }
+  }
+
+
+  public static boolean isInstanceField(@Nonnull Field field) {
+    return !Modifier.isStatic(field.getModifiers());
+  }
+
   /**
    * Returns the class this method was called 'framesToSkip' frames up the caller hierarchy.
    * <p/>

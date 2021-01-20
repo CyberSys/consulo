@@ -12,6 +12,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.Function;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.function.Predicate;
 
 public class MockFileDocumentManagerImpl extends FileDocumentManager {
   private static final Key<VirtualFile> MOCK_VIRTUAL_FILE_KEY = Key.create("MockVirtualFile");
@@ -60,6 +61,11 @@ public class MockFileDocumentManagerImpl extends FileDocumentManager {
 
   @Override
   public void saveAllDocuments() {
+  }
+
+  @Override
+  public void saveDocuments(@Nonnull Predicate<Document> filter) {
+
   }
 
   @Override

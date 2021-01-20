@@ -403,17 +403,19 @@ public final class DesktopEditorImpl extends UserDataHolderBase implements Edito
     myMarkupModelListener = new MarkupModelListener() {
       @Override
       public void afterAdded(@Nonnull RangeHighlighterEx highlighter) {
-        onHighlighterChanged(highlighter, canImpactGutterSize(highlighter), EditorUtil.attributesImpactFontStyleOrColor(highlighter.getTextAttributes()));
+        TextAttributes attributes = highlighter.getTextAttributes(getColorsScheme());
+        onHighlighterChanged(highlighter, canImpactGutterSize(highlighter), EditorUtil.attributesImpactFontStyle(attributes), EditorUtil.attributesImpactForegroundColor(attributes));
       }
 
       @Override
       public void beforeRemoved(@Nonnull RangeHighlighterEx highlighter) {
-        onHighlighterChanged(highlighter, canImpactGutterSize(highlighter), EditorUtil.attributesImpactFontStyleOrColor(highlighter.getTextAttributes()));
+        TextAttributes attributes = highlighter.getTextAttributes(getColorsScheme());
+        onHighlighterChanged(highlighter, canImpactGutterSize(highlighter), EditorUtil.attributesImpactFontStyle(attributes), EditorUtil.attributesImpactForegroundColor(attributes));
       }
 
       @Override
-      public void attributesChanged(@Nonnull RangeHighlighterEx highlighter, boolean renderersChanged, boolean fontStyleOrColorChanged) {
-        onHighlighterChanged(highlighter, renderersChanged, fontStyleOrColorChanged);
+      public void attributesChanged(@Nonnull RangeHighlighterEx highlighter, boolean renderersChanged, boolean fontStyleChanged, boolean foregroundColorChanged) {
+        onHighlighterChanged(highlighter, renderersChanged, fontStyleChanged, foregroundColorChanged);
       }
     };
 
@@ -600,46 +602,29 @@ public final class DesktopEditorImpl extends UserDataHolderBase implements Edito
            position == LineMarkerRendererEx.Position.RIGHT && !myGutterComponent.myForceRightFreePaintersAreaShown;
   }
 
-  private void onHighlighterChanged(@Nonnull RangeHighlighterEx highlighter, boolean canImpactGutterSize, boolean fontStyleOrColorChanged) {
-    if (myDocument.isInBulkUpdate()) return; // bulkUpdateFinished() will repaint anything
+  private void onHighlighterChanged(@Nonnull RangeHighlighterEx highlighter, boolean canImpactGutterSize, boolean fontStyleChanged, boolean foregroundColorChanged) {
+    if (myDocument.isInBulkUpdate() || myInlayModel.isInBatchMode()) return; // will be repainted later
 
     if (canImpactGutterSize) {
       updateGutterSize();
     }
 
-    boolean errorStripeNeedsRepaint = highlighter.getErrorStripeMarkColor() != null;
-    if (myDocumentChangeInProgress) {
-      // postpone repaint request, as folding model can be in inconsistent state and so coordinate
-      // conversions might give incorrect results
-      myErrorStripeNeedsRepaint |= errorStripeNeedsRepaint;
-      return;
-    }
+    if (myDocumentChangeInProgress) return;
 
     int textLength = myDocument.getTextLength();
-
-    int start = Math.min(Math.max(highlighter.getAffectedAreaStartOffset(), 0), textLength);
-    int end = Math.min(Math.max(highlighter.getAffectedAreaEndOffset(), 0), textLength);
+    int start = MathUtil.clamp(highlighter.getAffectedAreaStartOffset(), 0, textLength);
+    int end = MathUtil.clamp(highlighter.getAffectedAreaEndOffset(), 0, textLength);
 
     if (getGutterComponentEx().getCurrentAccessibleLine() != null && AccessibleGutterLine.isAccessibleGutterElement(highlighter.getGutterIconRenderer())) {
       escapeGutterAccessibleLine(start, end);
     }
     int startLine = start == -1 ? 0 : myDocument.getLineNumber(start);
     int endLine = end == -1 ? myDocument.getLineCount() : myDocument.getLineNumber(end);
-    if (start != end && fontStyleOrColorChanged) {
-      myView.invalidateRange(start, end);
+    if (start != end && (fontStyleChanged || foregroundColorChanged)) {
+      myView.invalidateRange(start, end, fontStyleChanged);
     }
     if (!myFoldingModel.isInBatchFoldingOperation()) { // at the end of batch folding operation everything is repainted
       repaintLines(Math.max(0, startLine - 1), Math.min(endLine + 1, getDocument().getLineCount()));
-    }
-
-    // optimization: there is no need to repaint error stripe if the highlighter is invisible on it
-    if (errorStripeNeedsRepaint) {
-      if (myFoldingModel.isInBatchFoldingOperation()) {
-        myErrorStripeNeedsRepaint = true;
-      }
-      else {
-        myMarkupModel.repaint(start, end);
-      }
     }
 
     updateCaretCursor();
@@ -1080,7 +1065,7 @@ public final class DesktopEditorImpl extends UserDataHolderBase implements Edito
 
     DesktopEditorLayeredPanel layeredPanel = new DesktopEditorLayeredPanel(this);
     layeredPanel.setMainPanel(myScrollPane);
-    if(mayShowToolbar()) {
+    if (mayShowToolbar()) {
       layeredPanel.addLayerPanel(new ContextMenuImpl(myScrollPane, this));
     }
     layeredPanel.addLayerPanel(myStatusComponentContainer.getPanel());
@@ -1533,7 +1518,7 @@ public final class DesktopEditorImpl extends UserDataHolderBase implements Edito
     endOffset = Math.min(endOffset, myDocument.getTextLength());
 
     if (invalidateTextLayout) {
-      myView.invalidateRange(startOffset, endOffset);
+      myView.invalidateRange(startOffset, endOffset, true);
     }
 
     if (!isShowing()) {
@@ -2093,10 +2078,18 @@ public final class DesktopEditorImpl extends UserDataHolderBase implements Edito
   @Nonnull
   public FontMetrics getFontMetrics(@JdkConstants.FontStyle int fontType) {
     EditorFontType ft;
-    if (fontType == Font.PLAIN) ft = EditorFontType.PLAIN;
-    else if (fontType == Font.BOLD) ft = EditorFontType.BOLD;
-    else if (fontType == Font.ITALIC) ft = EditorFontType.ITALIC;
-    else if (fontType == (Font.BOLD | Font.ITALIC)) ft = EditorFontType.BOLD_ITALIC;
+    if (fontType == Font.PLAIN) {
+      ft = EditorFontType.PLAIN;
+    }
+    else if (fontType == Font.BOLD) {
+      ft = EditorFontType.BOLD;
+    }
+    else if (fontType == Font.ITALIC) {
+      ft = EditorFontType.ITALIC;
+    }
+    else if (fontType == (Font.BOLD | Font.ITALIC)) {
+      ft = EditorFontType.BOLD_ITALIC;
+    }
     else {
       LOG.error("Unknown font type: " + fontType);
       ft = EditorFontType.PLAIN;
@@ -2110,7 +2103,9 @@ public final class DesktopEditorImpl extends UserDataHolderBase implements Edito
   }
 
   public Dimension getPreferredSize() {
-    return isReleased ? new Dimension() : Registry.is("idea.true.smooth.scrolling.dynamic.scrollbars") ? new Dimension(getPreferredWidthOfVisibleLines(), myView.getPreferredHeight()) : myView.getPreferredSize();
+    return isReleased
+           ? new Dimension()
+           : Registry.is("idea.true.smooth.scrolling.dynamic.scrollbars") ? new Dimension(getPreferredWidthOfVisibleLines(), myView.getPreferredHeight()) : myView.getPreferredSize();
   }
 
   /* When idea.true.smooth.scrolling=true, this method is used to compute width of currently visible line range
@@ -2486,7 +2481,8 @@ public final class DesktopEditorImpl extends UserDataHolderBase implements Edito
       newVisualCaret = getCaretModel().getVisualPosition();
       int caretShift = newCaretOffset - mySavedSelectionStart;
 
-      if (myMousePressedEvent != null && getMouseEventArea(myMousePressedEvent) != EditorMouseEventArea.EDITING_AREA &&
+      if (myMousePressedEvent != null &&
+          getMouseEventArea(myMousePressedEvent) != EditorMouseEventArea.EDITING_AREA &&
           getMouseEventArea(myMousePressedEvent) != EditorMouseEventArea.LINE_NUMBERS_AREA) {
         selectionModel.setSelection(oldSelectionStart, newCaretOffset);
       }
@@ -3578,7 +3574,8 @@ public final class DesktopEditorImpl extends UserDataHolderBase implements Edito
     }
 
     private void replaceInputMethodText(@Nonnull InputMethodEvent e) {
-      if (myNeedToSelectPreviousChar && SystemInfo.isMac &&
+      if (myNeedToSelectPreviousChar &&
+          SystemInfo.isMac &&
           (Registry.is("ide.mac.pressAndHold.brute.workaround") || Registry.is("ide.mac.pressAndHold.workaround") && (hasRelevantCommittedText(e) || e.getCaret() == null))) {
         // This is required to support input of accented characters using press-and-hold method (http://support.apple.com/kb/PH11264).
         // JDK currently properly supports this functionality only for TextComponent/JTextComponent descendants.
@@ -3651,7 +3648,9 @@ public final class DesktopEditorImpl extends UserDataHolderBase implements Edito
       myMousePressArea = null;
       myLastMousePressedLocation = null;
       runMouseReleasedCommand(e);
-      if (!e.isConsumed() && myMousePressedEvent != null && !myMousePressedEvent.isConsumed() &&
+      if (!e.isConsumed() &&
+          myMousePressedEvent != null &&
+          !myMousePressedEvent.isConsumed() &&
           Math.abs(e.getX() - myMousePressedEvent.getX()) < EditorUtil.getSpaceWidth(Font.PLAIN, DesktopEditorImpl.this) &&
           Math.abs(e.getY() - myMousePressedEvent.getY()) < getLineHeight()) {
         runMouseClickedCommand(e);
@@ -3873,7 +3872,8 @@ public final class DesktopEditorImpl extends UserDataHolderBase implements Edito
         }
         else if (e.getSource() != myGutterComponent && isCreateRectangularSelectionEvent(e)) {
           CaretState anchorCaretState = myCaretModel.getCaretsAndSelections().get(0);
-          LogicalPosition anchor = Objects.equals(anchorCaretState.getCaretPosition(), anchorCaretState.getSelectionStart()) ? anchorCaretState.getSelectionEnd() : anchorCaretState.getSelectionStart();
+          LogicalPosition anchor =
+                  Objects.equals(anchorCaretState.getCaretPosition(), anchorCaretState.getSelectionStart()) ? anchorCaretState.getSelectionEnd() : anchorCaretState.getSelectionStart();
           if (anchor == null) anchor = myCaretModel.getLogicalPosition();
           mySelectionModel.setBlockSelection(anchor, pos);
         }
@@ -3931,7 +3931,9 @@ public final class DesktopEditorImpl extends UserDataHolderBase implements Edito
             mySelectionModel.setSelection(caretOffset, caretOffset);
           }
           else {
-            if (e.getButton() == MouseEvent.BUTTON1 && (eventArea == EditorMouseEventArea.EDITING_AREA || eventArea == EditorMouseEventArea.LINE_NUMBERS_AREA) && (!toggleCaret || lastPressCreatedCaret)) {
+            if (e.getButton() == MouseEvent.BUTTON1 &&
+                (eventArea == EditorMouseEventArea.EDITING_AREA || eventArea == EditorMouseEventArea.LINE_NUMBERS_AREA) &&
+                (!toggleCaret || lastPressCreatedCaret)) {
               switch (e.getClickCount()) {
                 case 2:
                   selectWordAtCaret(mySettings.isMouseClickSelectionHonorsCamelWords() && mySettings.isCamelWords());
@@ -4746,8 +4748,7 @@ public final class DesktopEditorImpl extends UserDataHolderBase implements Edito
     public Insets getBorderInsets(Component c) {
       EditorsSplitters splitters = AWTComponentProviderUtil.findParent(c, EditorsSplitters.class);
 
-      boolean thereIsSomethingAbove =
-              !SystemInfo.isMac || UISettings.getInstance().getShowMainToolbar() || UISettings.getInstance().getShowNavigationBar() || toolWindowIsNotEmpty();
+      boolean thereIsSomethingAbove = !SystemInfo.isMac || UISettings.getInstance().getShowMainToolbar() || UISettings.getInstance().getShowNavigationBar() || toolWindowIsNotEmpty();
       //noinspection ConstantConditions
       Component header = myHeaderPanel == null ? null : ArrayUtil.getFirstElement(myHeaderPanel.getComponents());
       boolean paintTop = thereIsSomethingAbove && header == null && UISettings.getInstance().getEditorTabPlacement() != SwingConstants.TOP;

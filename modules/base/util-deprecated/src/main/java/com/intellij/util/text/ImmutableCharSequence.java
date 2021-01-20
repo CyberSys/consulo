@@ -1,38 +1,38 @@
-/*
- * Copyright 2000-2013 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package com.intellij.util.text;
 
+import org.jetbrains.annotations.Contract;
 import javax.annotation.Nonnull;
 
 public abstract class ImmutableCharSequence implements CharSequence {
 
+  @Contract(pure = true)
   public static CharSequence asImmutable(@Nonnull final CharSequence cs) {
     return isImmutable(cs) ? cs : cs.toString();
   }
 
-  public static boolean isImmutable(@Nonnull final CharSequence cs) {
-    if (cs instanceof ImmutableCharSequence) return true;
-    return cs instanceof CharSequenceSubSequence && isImmutable(((CharSequenceSubSequence)cs).getBaseSequence());
+  private static boolean isImmutable(@Nonnull final CharSequence cs) {
+    return cs instanceof ImmutableCharSequence || cs instanceof CharSequenceSubSequence && isImmutable(((CharSequenceSubSequence)cs).getBaseSequence());
   }
 
-  public abstract ImmutableCharSequence concat(CharSequence sequence);
+  @Contract(pure = true)
+  public abstract ImmutableCharSequence concat(@Nonnull CharSequence sequence);
 
-  public abstract ImmutableCharSequence insert(int index, CharSequence seq);
+  @Contract(pure = true)
+  public abstract ImmutableCharSequence insert(int index, @Nonnull CharSequence seq);
 
+  @Contract(pure = true)
   public abstract ImmutableCharSequence delete(int start, int end);
 
+  @Contract(pure = true)
   public abstract ImmutableCharSequence subtext(int start, int end);
+
+  @Contract(pure = true)
+  public ImmutableCharSequence replace(int start, int end, @Nonnull CharSequence seq) {
+    return delete(start, end).insert(start, seq);
+  }
+
+  @Nonnull
+  @Override
+  public abstract String toString();
 }

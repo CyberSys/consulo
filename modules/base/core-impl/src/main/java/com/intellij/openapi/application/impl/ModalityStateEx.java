@@ -18,6 +18,7 @@ package com.intellij.openapi.application.impl;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.containers.WeakList;
 import org.jetbrains.annotations.NonNls;
 import javax.annotation.Nonnull;
@@ -25,9 +26,11 @@ import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public class ModalityStateEx extends ModalityState {
   private final WeakList<Object> myModalEntities = new WeakList<>();
+  private static final Set<Object> ourTransparentEntities = Collections.newSetFromMap(ContainerUtil.createConcurrentWeakMap());
 
   @SuppressWarnings("unused")
   public ModalityStateEx() {
@@ -67,7 +70,7 @@ public class ModalityStateEx extends ModalityState {
 
     List<Object> otherEntities = ((ModalityStateEx)anotherState).getModalEntities();
     for (Object entity : getModalEntities()) {
-      if (!otherEntities.contains(entity)) return true; // I have entity which is absent in anotherState
+      if (!otherEntities.contains(entity) && !ourTransparentEntities.contains(entity)) return true; // I have entity which is absent in anotherState
     }
     return false;
   }
@@ -79,5 +82,13 @@ public class ModalityStateEx extends ModalityState {
 
   void removeModality(Object modalEntity) {
     myModalEntities.remove(modalEntity);
+  }
+
+  void markTransparent() {
+    ContainerUtil.addIfNotNull(ourTransparentEntities, ContainerUtil.getLastItem(getModalEntities()));
+  }
+
+  static void unmarkTransparent(@Nonnull Object modalEntity) {
+    ourTransparentEntities.remove(modalEntity);
   }
 }

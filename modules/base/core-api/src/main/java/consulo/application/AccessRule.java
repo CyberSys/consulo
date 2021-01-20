@@ -16,9 +16,11 @@
 package consulo.application;
 
 import com.intellij.openapi.application.Application;
+import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.util.ThrowableRunnable;
 import com.intellij.util.concurrency.AppExecutorUtil;
+import com.intellij.util.ui.UIUtil;
 import consulo.annotation.access.RequiredReadAction;
 import consulo.annotation.access.RequiredWriteAction;
 import consulo.application.internal.ApplicationWithIntentWriteLock;
@@ -83,13 +85,9 @@ public final class AccessRule {
 
   @Nonnull
   public static <T> AsyncResult<T> writeAsync(@RequiredWriteAction @Nonnull ThrowableComputable<T, Throwable> action) {
-    ApplicationWithIntentWriteLock application = (ApplicationWithIntentWriteLock)Application.get();
-    ExecutorService service = AppExecutorUtil.getAppExecutorService();
     AsyncResult<T> result = AsyncResult.undefined();
-    service.execute(() -> {
-      application.acquireWriteIntentLock();
-
-      try {
+    UIUtil.invokeLaterIfNeeded(() -> {
+      WriteAction.run(() -> {
         try {
           result.setDone(application.runWriteActionNoIntentLock(action));
         }
@@ -98,10 +96,7 @@ public final class AccessRule {
 
           result.rejectWithThrowable(throwable);
         }
-      }
-      finally {
-        application.releaseWriteIntentLock();
-      }
+      });
     });
 
     return result;

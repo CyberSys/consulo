@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2012 JetBrains s.r.o.
+ * Copyright 2000-2017 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.intellij.openapi.editor.ex;
+package com.intellij.build.events.impl;
 
-import com.intellij.openapi.editor.Document;
-import javax.annotation.Nonnull;
+import com.intellij.build.events.SkippedResult;
 
-public interface PrioritizedInternalDocumentListener extends PrioritizedDocumentListener {
-  void moveTextHappened(@Nonnull Document document, int start, int end, int base);
+/**
+ * @author Vladislav.Soroka
+ */
+public class SkippedResultImpl implements SkippedResult {
 }

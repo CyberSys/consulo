@@ -252,6 +252,16 @@
       <artifactId>javazoom.mp3</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>consulo-build-ui-api</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>consulo-build-ui-impl</artifactId>
+      <version>${project.version}</version>
+    </dependency>
 
     <!--optional dependency-->
     <dependency>

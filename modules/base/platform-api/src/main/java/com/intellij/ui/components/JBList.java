@@ -292,8 +292,8 @@ public class JBList<E> extends JList<E> implements ComponentWithEmptyText, Compo
     super.setCellRenderer(new ExpandedItemListCellRendererWrapper<>(cellRenderer, myExpandableItemsHandler));
   }
 
-  public <T> void installCellRenderer(@Nonnull final NotNullFunction<? super T, ? extends JComponent> fun) {
-    setCellRenderer(new SelectionAwareListCellRenderer<>(fun));
+  public void installCellRenderer(@Nonnull final NotNullFunction<? super E, ? extends JComponent> fun) {
+    setCellRenderer(new SelectionAwareListCellRenderer<E>(fun));
   }
 
   public void setDataProvider(@Nonnull DataProvider provider) {

@@ -88,6 +88,8 @@ public enum LoadingState {
   }
 
   public boolean isOccurred() {
-    return StartUpMeasurer.currentState.get().ordinal() >= ordinal();
+    // TODO [vistall] unsupported
+    return false;
+    //return StartUpMeasurer.currentState.get().ordinal() >= ordinal();
   }
 }

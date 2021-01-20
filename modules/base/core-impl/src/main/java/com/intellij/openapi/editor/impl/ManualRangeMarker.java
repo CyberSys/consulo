@@ -1,26 +1,12 @@
-/*
- * Copyright 2000-2017 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package com.intellij.openapi.editor.impl;
 
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.impl.event.DocumentEventImpl;
-import com.intellij.openapi.editor.impl.event.RetargetRangeMarkers;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.Segment;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.util.DocumentEventUtil;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -36,11 +22,7 @@ public class ManualRangeMarker implements Segment {
   private final boolean mySurviveOnExternalChange;
   private final PersistentRangeMarker.LinesCols myLinesCols;
 
-  public ManualRangeMarker(int start, int end,
-                           boolean greedyLeft,
-                           boolean greedyRight,
-                           boolean surviveOnExternalChange,
-                           @Nullable PersistentRangeMarker.LinesCols linesCols) {
+  public ManualRangeMarker(int start, int end, boolean greedyLeft, boolean greedyRight, boolean surviveOnExternalChange, @Nullable PersistentRangeMarker.LinesCols linesCols) {
     myStart = start;
     myEnd = end;
     myGreedyLeft = greedyLeft;
@@ -51,26 +33,25 @@ public class ManualRangeMarker implements Segment {
 
   @Nullable
   public ManualRangeMarker getUpdatedRange(@Nonnull DocumentEvent event, @Nonnull FrozenDocument documentBefore) {
-    if (event instanceof RetargetRangeMarkers) {
-      int start = ((RetargetRangeMarkers)event).getStartOffset();
-      if (myStart >= start && myEnd <= ((RetargetRangeMarkers)event).getEndOffset()) {
-        int delta = ((RetargetRangeMarkers)event).getMoveDestinationOffset() - start;
-        return new ManualRangeMarker(myStart + delta, myEnd + delta, myGreedyLeft, myGreedyRight, mySurviveOnExternalChange, null);
-      }
-    }
-
     if (mySurviveOnExternalChange && PersistentRangeMarkerUtil.shouldTranslateViaDiff(event, myStart, myEnd)) {
-      PersistentRangeMarker.LinesCols linesCols = myLinesCols != null ? myLinesCols
-                                                                      : PersistentRangeMarker.storeLinesAndCols(documentBefore, myStart, myEnd);
-      Pair<TextRange, PersistentRangeMarker.LinesCols> pair =
-              linesCols == null ? null : PersistentRangeMarker.translateViaDiff((DocumentEventImpl)event, linesCols);
+      PersistentRangeMarker.LinesCols linesCols = myLinesCols != null ? myLinesCols : PersistentRangeMarker.storeLinesAndCols(documentBefore, myStart, myEnd);
+      Pair<TextRange, PersistentRangeMarker.LinesCols> pair = linesCols == null ? null : PersistentRangeMarker.translateViaDiff((DocumentEventImpl)event, linesCols);
       if (pair != null) {
         return new ManualRangeMarker(pair.first.getStartOffset(), pair.first.getEndOffset(), myGreedyLeft, myGreedyRight, true, pair.second);
       }
     }
 
     TextRange range = RangeMarkerImpl.applyChange(event, myStart, myEnd, myGreedyLeft, myGreedyRight, false);
-    return range == null ? null : new ManualRangeMarker(range.getStartOffset(), range.getEndOffset(), myGreedyLeft, myGreedyRight, mySurviveOnExternalChange, null);
+    if (range == null) return null;
+
+    int delta = 0;
+    if (DocumentEventUtil.isMoveInsertion(event)) {
+      int srcOffset = event.getMoveOffset();
+      if (srcOffset <= range.getStartOffset() && range.getEndOffset() <= srcOffset + event.getNewLength()) {
+        delta = event.getOffset() - srcOffset;
+      }
+    }
+    return new ManualRangeMarker(range.getStartOffset() + delta, range.getEndOffset() + delta, myGreedyLeft, myGreedyRight, mySurviveOnExternalChange, null);
   }
 
   @Override

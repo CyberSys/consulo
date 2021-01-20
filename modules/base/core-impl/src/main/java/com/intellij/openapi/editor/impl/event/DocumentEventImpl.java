@@ -1,31 +1,18 @@
-/*
- * Copyright 2000-2009 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package com.intellij.openapi.editor.impl.event;
 
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.util.diff.Diff;
 import com.intellij.util.diff.FilesTooBigForDiffException;
-
 import javax.annotation.Nonnull;
 
 public class DocumentEventImpl extends DocumentEvent {
   private final int myOffset;
+  @Nonnull
   private final CharSequence myOldString;
   private final int myOldLength;
+  @Nonnull
   private final CharSequence myNewString;
   private final int myNewLength;
 
@@ -36,10 +23,7 @@ public class DocumentEventImpl extends DocumentEvent {
 
   private final int myInitialStartOffset;
   private final int myInitialOldLength;
-
-  public DocumentEventImpl(@Nonnull Document document, int offset, @Nonnull CharSequence oldString, @Nonnull CharSequence newString, long oldTimeStamp, boolean wholeTextReplaced) {
-    this(document, offset, oldString, newString, oldTimeStamp, wholeTextReplaced, offset, oldString.length());
-  }
+  private final int myMoveOffset;
 
   public DocumentEventImpl(@Nonnull Document document,
                            int offset,
@@ -48,7 +32,8 @@ public class DocumentEventImpl extends DocumentEvent {
                            long oldTimeStamp,
                            boolean wholeTextReplaced,
                            int initialStartOffset,
-                           int initialOldLength) {
+                           int initialOldLength,
+                           int moveOffset) {
     super(document);
     myOffset = offset;
 
@@ -60,12 +45,14 @@ public class DocumentEventImpl extends DocumentEvent {
 
     myInitialStartOffset = initialStartOffset;
     myInitialOldLength = initialOldLength;
+    myMoveOffset = moveOffset;
 
     myOldTimeStamp = oldTimeStamp;
 
     myIsWholeDocReplaced = getDocument().getTextLength() != 0 && wholeTextReplaced;
     assert initialStartOffset >= 0 : initialStartOffset;
     assert initialOldLength >= 0 : initialOldLength;
+    assert moveOffset == offset || myOldLength == 0 || myNewLength == 0 : this;
   }
 
   @Override
@@ -95,12 +82,6 @@ public class DocumentEventImpl extends DocumentEvent {
     return myNewString;
   }
 
-  @Override
-  @Nonnull
-  public Document getDocument() {
-    return (Document)getSource();
-  }
-
   /**
    * @return initial start offset as requested in {@link Document#replaceString(int, int, CharSequence)} call, before common prefix and
    * suffix were removed from the changed range.
@@ -118,15 +99,18 @@ public class DocumentEventImpl extends DocumentEvent {
   }
 
   @Override
+  public int getMoveOffset() {
+    return myMoveOffset;
+  }
+
+  @Override
   public long getOldTimeStamp() {
     return myOldTimeStamp;
   }
 
   @Override
-  @SuppressWarnings("HardCodedStringLiteral")
   public String toString() {
-    return "DocumentEventImpl[myOffset=" + myOffset + ", myOldLength=" + myOldLength + ", myNewLength=" + myNewLength +
-           ", myOldString='" + myOldString + "', myNewString='" + myNewString + "']" + (isWholeTextReplaced() ? " Whole." : ".");
+    return "DocumentEventImpl[myOffset=" + myOffset + ", myOldLength=" + myOldLength + ", myNewLength=" + myNewLength + "]" + (isWholeTextReplaced() ? " Whole." : ".");
   }
 
   @Override

@@ -1,8 +1,8 @@
-// Copyright 2000-2019 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
-
+// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package com.intellij.psi.impl;
 
 import com.intellij.AppTopics;
+import com.intellij.ide.IdeEventQueue;
 import com.intellij.injected.editor.DocumentWindow;
 import com.intellij.lang.ASTNode;
 import com.intellij.lang.injection.InjectedLanguageManager;
@@ -18,8 +18,7 @@ import com.intellij.openapi.fileEditor.impl.FileDocumentManagerImpl;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectLocator;
-import com.intellij.openapi.project.impl.ProjectImpl;
-import consulo.disposer.Disposer;
+import com.intellij.openapi.project.ex.ProjectEx;
 import com.intellij.openapi.util.Segment;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.util.text.StringUtil;
@@ -34,21 +33,18 @@ import com.intellij.util.ArrayUtil;
 import com.intellij.util.FileContentUtil;
 import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.messages.MessageBusConnection;
-import jakarta.inject.Singleton;
 import org.jetbrains.annotations.NonNls;
-import org.jetbrains.annotations.TestOnly;
-
 import javax.annotation.Nonnull;
+
 import javax.annotation.Nullable;
 import java.util.*;
 
 //todo listen & notifyListeners readonly events?
-@Singleton
 public final class PsiDocumentManagerImpl extends PsiDocumentManagerBase {
   private final boolean myUnitTestMode = ApplicationManager.getApplication().isUnitTestMode();
 
-  public PsiDocumentManagerImpl(@Nonnull Project project, @Nonnull DocumentCommitProcessor documentCommitProcessor) {
-    super(project, documentCommitProcessor);
+  public PsiDocumentManagerImpl(@Nonnull Project project) {
+    super(project);
 
     EditorFactory.getInstance().getEventMulticaster().addDocumentListener(this, this);
     ((EditorEventMulticasterImpl)EditorFactory.getInstance().getEventMulticaster()).addPrioritizedDocumentListener(new PriorityEventCollector(), this);
@@ -60,7 +56,6 @@ public final class PsiDocumentManagerImpl extends PsiDocumentManagerBase {
         fireDocumentCreated(document, psiFile);
       }
     });
-    Disposer.register(this, () -> ((DocumentCommitThread)myDocumentCommitProcessor).cancelTasksOnProjectDispose(project));
   }
 
   @Nullable
@@ -87,14 +82,10 @@ public final class PsiDocumentManagerImpl extends PsiDocumentManagerBase {
       if (myUnitTestMode) {
         myStopTrackingDocuments = true;
         try {
-          LOG.error("Too many uncommitted documents for " +
-                    myProject +
-                    "(" +
-                    myUncommittedDocuments.size() +
-                    ")" +
-                    ":\n" +
-                    StringUtil.join(myUncommittedDocuments, "\n") +
-                    (myProject instanceof ProjectImpl ? "\n\n Project creation trace: " + ((ProjectImpl)myProject).getCreationTrace() : ""));
+          //noinspection TestOnlyProblems
+          LOG.error("Too many uncommitted documents for " + myProject + "(" + myUncommittedDocuments.size() + ")" +
+                    ":\n" + StringUtil.join(myUncommittedDocuments, "\n") +
+                    (myProject instanceof ProjectEx ? "\n\n Project creation trace: " + ((ProjectEx)myProject).getCreationTrace() : ""));
         }
         finally {
           //noinspection TestOnlyProblems
@@ -122,16 +113,22 @@ public final class PsiDocumentManagerImpl extends PsiDocumentManagerBase {
     super.beforeDocumentChangeOnUnlockedDocument(viewProvider);
   }
 
+
   @Override
   protected boolean finishCommitInWriteAction(@Nonnull Document document,
                                               @Nonnull List<? extends BooleanRunnable> finishProcessors,
                                               @Nonnull List<? extends BooleanRunnable> reparseInjectedProcessors,
                                               boolean synchronously,
                                               boolean forceNoPsiCommit) {
+    boolean success = super.finishCommitInWriteAction(document, finishProcessors, reparseInjectedProcessors, synchronously, forceNoPsiCommit);
+    PsiFile file = getCachedPsiFile(document);
+    if (file != null) {
+      InjectedLanguageManagerImpl.clearInvalidInjections(file);
+    }
     if (ApplicationManager.getApplication().isWriteAccessAllowed()) { // can be false for non-physical PSI
       InjectedLanguageManagerImpl.disposeInvalidEditors();
     }
-    return super.finishCommitInWriteAction(document, finishProcessors, reparseInjectedProcessors, synchronously, forceNoPsiCommit);
+    return success;
   }
 
   @Override
@@ -142,17 +139,14 @@ public final class PsiDocumentManagerImpl extends PsiDocumentManagerBase {
 
   @Override
   public void doPostponedOperationsAndUnblockDocument(@Nonnull Document doc) {
-    if (doc instanceof DocumentWindow) doc = ((DocumentWindow)doc).getDelegate();
-    final PostprocessReformattingAspect component = myProject.getComponent(PostprocessReformattingAspect.class);
-    final FileViewProvider viewProvider = getCachedViewProvider(doc);
-    if (viewProvider != null && component != null) component.doPostponedFormatting(viewProvider);
-  }
-
-  @Override
-  @TestOnly
-  public void clearUncommittedDocuments() {
-    super.clearUncommittedDocuments();
-    ((DocumentCommitThread)myDocumentCommitProcessor).clearQueue();
+    if (doc instanceof DocumentWindow) {
+      doc = ((DocumentWindow)doc).getDelegate();
+    }
+    PostprocessReformattingAspect component = PostprocessReformattingAspect.getInstance(myProject);
+    FileViewProvider viewProvider = getCachedViewProvider(doc);
+    if (viewProvider != null && component != null) {
+      component.doPostponedFormatting(viewProvider);
+    }
   }
 
   @Nonnull
@@ -203,15 +197,10 @@ public final class PsiDocumentManagerImpl extends PsiDocumentManagerBase {
   }
 
   @Override
-  public void associatePsi(@Nonnull Document document, @Nullable PsiFile file) {
-    if (file != null) {
-      VirtualFile vFile = file.getViewProvider().getVirtualFile();
-      Document cachedDocument = FileDocumentManager.getInstance().getCachedDocument(vFile);
-      if (cachedDocument != null && cachedDocument != document) {
-        throw new IllegalStateException("Can't replace existing document");
-      }
-
-      FileDocumentManagerImpl.registerDocument(document, vFile);
-    }
+  public boolean commitAllDocumentsUnderProgress() {
+    int eventCount = IdeEventQueue.getInstance().getEventCount();
+    boolean success = super.commitAllDocumentsUnderProgress();
+    IdeEventQueue.getInstance().setEventCount(eventCount);
+    return success;
   }
 }

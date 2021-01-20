@@ -22,7 +22,6 @@ import com.intellij.openapi.project.Project;
 import consulo.disposer.Disposable;
 
 import javax.annotation.Nonnull;
-
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -52,21 +51,24 @@ public class AppUIExecutorImpl extends BaseExpirableExecutorMixinImpl<AppUIExecu
   }
 
   private final ModalityState modality;
+  private final ExecutionThread thread;
 
-  public AppUIExecutorImpl(ModalityState modalityState) {
-    super(new ContextConstraint[0], new BooleanSupplier[0], Collections.emptySet(), new MyExecutor(modalityState));
-    modality = modalityState;
+  public AppUIExecutorImpl(ModalityState modality, ExecutionThread thread) {
+    super(new ContextConstraint[0], new BooleanSupplier[0], Collections.emptySet(), new MyExecutor(modality));
+    this.modality = modality;
+    this.thread = thread;
   }
 
-  public AppUIExecutorImpl(ModalityState modalityState, ContextConstraint[] constraints, BooleanSupplier[] cancellationConditions, Set<? extends Expiration> expirableHandles) {
-    super(constraints, cancellationConditions, expirableHandles, new MyExecutor(modalityState));
-    modality = modalityState;
+  public AppUIExecutorImpl(ModalityState modality, ExecutionThread thread, ContextConstraint[] constraints, BooleanSupplier[] cancellationConditions, Set<? extends Expiration> expirableHandles) {
+    super(constraints, cancellationConditions, expirableHandles, new MyExecutor(modality));
+    this.modality = modality;
+    this.thread = thread;
   }
 
   @Nonnull
   @Override
   protected AppUIExecutorImpl cloneWith(ContextConstraint[] constraints, BooleanSupplier[] cancellationConditions, Set<? extends Expiration> expirationSet) {
-    return new AppUIExecutorImpl(modality, constraints, cancellationConditions, expirationSet);
+    return new AppUIExecutorImpl(modality, thread, constraints, cancellationConditions, expirationSet);
   }
 
   @Nonnull
@@ -138,6 +140,15 @@ public class AppUIExecutorImpl extends BaseExpirableExecutorMixinImpl<AppUIExecu
 
   @Override
   public void dispatchLaterUnconstrained(Runnable runnable) {
-    ApplicationManager.getApplication().invokeLater(runnable, modality);
+    switch (thread) {
+      case EDT:
+        ApplicationManager.getApplication().invokeLater(runnable, modality);
+        break;
+      case WT:
+        ApplicationManager.getApplication().invokeLaterOnWriteThread(runnable, modality);
+        break;
+      default:
+        throw new UnsupportedOperationException();
+    }
   }
 }

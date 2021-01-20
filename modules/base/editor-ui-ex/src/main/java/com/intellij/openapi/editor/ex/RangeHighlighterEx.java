@@ -35,12 +35,28 @@ public interface RangeHighlighterEx extends RangeHighlighter, RangeMarkerEx {
    */
   boolean isVisibleIfFolded();
 
+  /**
+   * If {@code true}, this highlighter is persistent and is retained between code analyzer runs and IDE restarts.
+   *
+   * @see MarkupModelEx#addPersistentLineHighlighter(TextAttributesKey, int, int)
+   * @see MarkupModelEx#addRangeHighlighterAndChangeAttributes(TextAttributesKey, int, int, int, HighlighterTargetArea, boolean, Consumer)
+   */
+  default boolean isPersistent() {
+    return false;
+  }
+
+  
   default boolean isRenderedInGutter() {
     return getGutterIconRenderer() != null || getLineMarkerRenderer() != null;
   }
 
+  /**
+   * @deprecated Use {@link #getErrorStripeMarkColor(EditorColorsScheme)} directly,
+   * it's impossible to tell if a highlighter should be rendered in a scroll bar since an editor can have a custom color scheme
+   */
+  @Deprecated
   default boolean isRenderedInScrollBar() {
-    return getErrorStripeMarkColor() != null;
+    return getErrorStripeMarkColor(null) != null;
   }
 
   Comparator<RangeHighlighterEx> BY_AFFECTED_START_OFFSET = Comparator.comparingInt(RangeHighlighterEx::getAffectedAreaStartOffset);

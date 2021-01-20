@@ -27,7 +27,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 /**
  * @author Sergey.Malenkov
  */
-public class AnimatedIcon implements Icon {
+public class AnimatedIcon implements Icon, Image {
   /**
    * This key is used to allow animated icons in lists, tables and trees.
    * If the corresponding client property is set to {@code true} the corresponding component
@@ -265,5 +265,15 @@ public class AnimatedIcon implements Icon {
   @Nullable
   protected Component getRendererOwner(@Nullable Component component) {
     return UIUtil.isClientPropertyTrue(component, ANIMATION_IN_RENDERER_ALLOWED) ? component : null;
+  }
+
+  @Override
+  public int getWidth() {
+    return getIconWidth();
+  }
+
+  @Override
+  public int getHeight() {
+    return getIconHeight();
   }
 }

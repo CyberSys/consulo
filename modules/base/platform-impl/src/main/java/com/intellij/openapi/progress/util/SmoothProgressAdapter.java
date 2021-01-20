@@ -15,6 +15,7 @@
  */
 package com.intellij.openapi.progress.util;
 
+import com.intellij.openapi.progress.impl.BlockingProgressIndicator;
 import consulo.disposer.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;

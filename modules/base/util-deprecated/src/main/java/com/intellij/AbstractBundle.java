@@ -17,6 +17,7 @@ package com.intellij;
 
 import com.intellij.util.containers.ConcurrentFactoryMap;
 import com.intellij.util.containers.ContainerUtil;
+import consulo.annotation.DeprecationInfo;
 import consulo.logging.Logger;
 import org.jetbrains.annotations.NonNls;
 
@@ -27,6 +28,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
+import java.util.function.Supplier;
 
 /**
  * Base class for particular scoped bundles (e.g. <code>'vcs'</code> bundles, <code>'aop'</code> bundles etc).
@@ -61,6 +63,13 @@ public abstract class AbstractBundle {
 
   public String getMessage(@Nonnull String key, Object... params) {
     return CommonBundle.message(getBundle(), key, params);
+  }
+
+  @Nonnull
+  @Deprecated
+  @DeprecationInfo("Must migrate to LocalizeValue")
+  public Supplier<String> getMessagePointer(@Nonnull String key) {
+    return () -> getMessage(key);
   }
 
   private ResourceBundle getBundle() {

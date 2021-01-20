@@ -39,7 +39,7 @@ public class WithDocumentsCommitted implements ConstrainedExecution.ContextConst
 
   @Override
   public void schedule(Runnable runnable) {
-    PsiDocumentManager.getInstance(myProject).performLaterWhenAllCommitted(runnable, myModalityState);
+    PsiDocumentManager.getInstance(myProject).performLaterWhenAllCommitted(myModalityState, runnable);
   }
 
   @Override
